@@ -9,12 +9,15 @@ export type DB = BetterSQLite3Database<typeof schema>;
 
 /** Abre o arquivo SQLite com os pragmas recomendados para uso local. */
 export function openSqlite(filePath: string = env.DATABASE_PATH): Database.Database {
+  const inMemory = filePath === ":memory:"; // usado pelos testes
   // Caminho vem do .env em tempo de execução; o bundler não deve tentar rastreá-lo.
-  const resolved = path.resolve(/*turbopackIgnore: true*/ process.cwd(), filePath);
-  fs.mkdirSync(path.dirname(resolved), { recursive: true });
+  const resolved = inMemory
+    ? filePath
+    : path.resolve(/*turbopackIgnore: true*/ process.cwd(), filePath);
+  if (!inMemory) fs.mkdirSync(path.dirname(resolved), { recursive: true });
 
   const sqlite = new Database(resolved);
-  sqlite.pragma("journal_mode = WAL"); // leituras e escritas concorrentes sem travar
+  if (!inMemory) sqlite.pragma("journal_mode = WAL"); // leituras e escritas concorrentes sem travar
   sqlite.pragma("synchronous = NORMAL"); // seguro com WAL e bem mais rápido
   sqlite.pragma("foreign_keys = ON"); // SQLite vem com FKs desligadas por padrão!
   sqlite.pragma("busy_timeout = 5000");

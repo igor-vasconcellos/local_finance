@@ -35,11 +35,31 @@ npm run dev       # abre em http://localhost:3000
 > **Windows:** se o `npm install` reclamar ao compilar o `better-sqlite3`, confira se
 > está usando Node 22 ou 24 LTS (há binários prontos para essas versões).
 
+### Primeiro acesso e login
+
+1. Abra http://localhost:3000 — na primeira vez você cai em **Primeiro acesso** para
+   criar o usuário master (nome, e-mail e senha com 10+ caracteres, letras e números).
+2. Depois, todo login tem **duas etapas**: e-mail + senha → código de 6 dígitos
+   (válido por 5 minutos, uso único, até 5 tentativas; reenvio a cada 30s).
+3. Após 5 senhas erradas seguidas, o login fica bloqueado por 15 minutos.
+
 ### E-mail para o código 2FA
 
 Sem SMTP configurado, o código de 6 dígitos aparece **no terminal** onde o `npm run dev`
 está rodando (ótimo para começar). Para receber por e-mail, preencha as variáveis
-`SMTP_*` no `.env` — o `.env.example` traz um exemplo com Gmail (senha de app).
+`SMTP_*` no `.env` — o `.env.example` traz um exemplo com Gmail (senha de app) — e
+reinicie o servidor. Se o SMTP falhar, o código é impresso no terminal como fallback
+(a tela de verificação avisa).
+
+### Esqueci minha senha
+
+Como o app é local, a recuperação é feita pelo terminal do próprio computador:
+
+```bash
+npm run user:reset-password
+```
+
+Define uma nova senha, desbloqueia o login e encerra todas as sessões abertas.
 
 ---
 
@@ -54,6 +74,7 @@ está rodando (ótimo para começar). Para receber por e-mail, preencha as vari�
 | `npm run db:seed` | Insere dados iniciais (idempotente) |
 | `npm run db:backup` | Cópia consistente do banco em `data/backups/` |
 | `npm run db:studio` | Abre o Drizzle Studio para inspecionar o banco |
+| `npm run user:reset-password` | Redefine a senha do usuário master |
 | `npm run db:generate` | Gera nova migração após alterar `src/db/schema` |
 | `npm test` | Testes automatizados |
 | `npm run typecheck` / `npm run lint` | Verificações de tipo e estilo |
@@ -111,7 +132,7 @@ Ao acessar por HTTPS, ajuste no `.env`: `APP_URL=<url https>` e `COOKIE_SECURE=t
 ## Roadmap
 
 - [x] **Etapa 1** — Setup, estrutura, schema SQLite, `.env`
-- [ ] **Etapa 2** — Cadastro do usuário master + login com 2FA (SMTP / console)
+- [x] **Etapa 2** — Cadastro do usuário master + login com 2FA (SMTP / console)
 - [ ] **Etapa 3** — Layout (sidebar, dark mode) + CRUD de rendas, gastos, cartões e parcelas
 - [ ] **Etapa 4** — Caixinhas com rendimento CDI e histórico de aportes
 - [ ] **Etapa 5** — Simulador (crédito e débito) + farol + efetivação
