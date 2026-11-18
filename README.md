@@ -51,6 +51,19 @@ está rodando (ótimo para começar). Para receber por e-mail, preencha as vari�
 reinicie o servidor. Se o SMTP falhar, o código é impresso no terminal como fallback
 (a tela de verificação avisa).
 
+### Cadastros (Etapa 3)
+
+- **Rendas** — salário, pró-labore e extras; mensais (com início e término opcional) ou únicas.
+- **Gastos fixos** — aluguel, contas, assinaturas; com categoria e dia de vencimento.
+- **Cartões** — limite, dia de fechamento e de vencimento. Cada compra (à vista ou em até
+  48x) gera as parcelas automaticamente nas faturas certas:
+  - compra **antes** do dia de fechamento → fatura que fecha naquele mês;
+  - compra **no dia** do fechamento ou depois → fatura seguinte;
+  - a fatura é identificada pelo **mês do vencimento** (quando o dinheiro sai da conta);
+  - centavos que sobram na divisão vão para as primeiras parcelas (a soma bate sempre).
+- **Limite comprometido** = tudo o que ainda não foi pago, incluindo parcelas futuras.
+  Marcar uma fatura como paga libera o limite correspondente.
+
 ### Esqueci minha senha
 
 Como o app é local, a recuperação é feita pelo terminal do próprio computador:
@@ -133,7 +146,7 @@ Ao acessar por HTTPS, ajuste no `.env`: `APP_URL=<url https>` e `COOKIE_SECURE=t
 
 - [x] **Etapa 1** — Setup, estrutura, schema SQLite, `.env`
 - [x] **Etapa 2** — Cadastro do usuário master + login com 2FA (SMTP / console)
-- [ ] **Etapa 3** — Layout (sidebar, dark mode) + CRUD de rendas, gastos, cartões e parcelas
+- [x] **Etapa 3** — Layout (sidebar, dark mode) + CRUD de rendas, gastos, cartões e parcelas
 - [ ] **Etapa 4** — Caixinhas com rendimento CDI e histórico de aportes
 - [ ] **Etapa 5** — Simulador (crédito e débito) + farol + efetivação
 - [ ] **Etapa 6** — Dashboards mensal / semestral / anual, real vs. simulado

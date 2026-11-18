@@ -27,7 +27,7 @@ export default async function DashboardPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Olá, {firstName}! 👋</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Login com verificação em duas etapas concluído. O dashboard financeiro chega nas próximas etapas.
+          Comece cadastrando suas rendas, gastos fixos e cartões pelo menu. O dashboard financeiro completo chega na Etapa 6.
         </p>
       </div>
 
