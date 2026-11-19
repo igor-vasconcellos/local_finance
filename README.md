@@ -93,6 +93,18 @@ reinicie o servidor. Se o SMTP falhar, o código é impresso no terminal como fa
 - No painel, **Reserva** = total das caixinhas com rendimento, e **Metas** na previsão
   do mês = o que você guardou no mês + o que ainda falta guardar para seguir as metas.
 
+### Simulador (Etapa 5)
+
+- Simule uma compra no **crédito** (parcelada, nas faturas certas do cartão) ou no
+  **débito/Pix** (valor inteiro no mês) e veja na hora o impacto nos próximos 12 meses:
+  saldo livre antes × depois, gráfico e o **farol** de cada mês (com aviso quando piora
+  ou fica negativo, e quando passa do limite disponível do cartão).
+- Saldo livre = rendas previstas − (gastos fixos + faturas que vencem no mês + gastos
+  avulsos + metas das caixinhas + simulações salvas consideradas).
+- **Simulações salvas** podem entrar ou sair do cenário (👁) para comparar opções.
+- **Efetivar** transforma a simulação em lançamento real: no crédito vira compra no
+  cartão; no débito vira um gasto avulso (listado em Gastos fixos → Gastos avulsos).
+
 ### Atualizações
 
 Depois de `git pull`, basta rodar `npm run dev`: o banco é atualizado sozinho ao
@@ -182,5 +194,5 @@ Ao acessar por HTTPS, ajuste no `.env`: `APP_URL=<url https>` e `COOKIE_SECURE=t
 - [x] **Etapa 2** — Cadastro do usuário master + login com 2FA (SMTP / console)
 - [x] **Etapa 3** — Layout (sidebar, dark mode) + CRUD de rendas, gastos, cartões e parcelas
 - [x] **Etapa 4** — Caixinhas com rendimento CDI e histórico de aportes
-- [ ] **Etapa 5** — Simulador (crédito e débito) + farol + efetivação
+- [x] **Etapa 5** — Simulador (crédito e débito) + farol + efetivação
 - [ ] **Etapa 6** — Dashboards mensal / semestral / anual, real vs. simulado

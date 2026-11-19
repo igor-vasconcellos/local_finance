@@ -17,7 +17,9 @@ import { incomeAppliesTo, listIncomes } from "./incomes";
 import { getSettings } from "./settings";
 import { listSettlements } from "./settlements";
 
-export type Health = "green" | "yellow" | "red";
+import { healthOf, type Health } from "@/lib/health";
+
+export { healthOf, type Health };
 
 export type IncomeOccurrence = { id: number; name: string; date: ISODate; amountCents: number; settled: boolean };
 export type ExpenseOccurrence = {
@@ -92,14 +94,6 @@ function oneTimeInMonth(month: Month) {
     .leftJoin(categories, eq(categories.id, oneTimeExpenses.categoryId))
     .where(and(gte(oneTimeExpenses.date, `${month}-01`), lte(oneTimeExpenses.date, `${month}-31`)))
     .all();
-}
-
-export function healthOf(freeCents: number, incomeCents: number, greenBp: number, yellowBp: number): Health {
-  if (incomeCents <= 0) return freeCents > 0 ? "green" : "red";
-  const ratioBp = (freeCents / incomeCents) * 10000;
-  if (ratioBp > greenBp) return "green";
-  if (ratioBp >= yellowBp) return "yellow";
-  return "red";
 }
 
 export function getMonthOverview(month: Month, today: ISODate = todayISO()) {

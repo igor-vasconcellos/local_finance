@@ -61,7 +61,10 @@ export function MoneyInput({
         }}
         onFocus={(e) => {
           const el = e.currentTarget;
-          requestAnimationFrame(() => el.setSelectionRange(el.value.length, el.value.length));
+          // Leva o cursor ao fim, a menos que o usuário já tenha selecionado algo (ex.: Ctrl+A).
+          requestAnimationFrame(() => {
+            if (el.selectionStart === el.selectionEnd) el.setSelectionRange(el.value.length, el.value.length);
+          });
           props.onFocus?.(e);
         }}
         onClick={(e) => {

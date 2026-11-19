@@ -5,7 +5,9 @@ import { addMonths, currentMonth, formatMonthLong, formatMonthShort } from "@/li
 import { formatBRL } from "@/lib/money";
 import { listCategories } from "@/server/finance/categories";
 import { expenseAppliesTo, listExpenses } from "@/server/finance/expenses";
+import { listOneTimeExpenses } from "@/server/finance/one-time";
 import { ExpensesView } from "./expenses-view";
+import { OneTimeList } from "./one-time-list";
 
 export const metadata: Metadata = { title: "Gastos fixos" };
 
@@ -86,6 +88,8 @@ export default async function ExpensesPage() {
           </Card>
         )}
       </div>
+
+      <OneTimeList items={listOneTimeExpenses()} />
     </>
   );
 }

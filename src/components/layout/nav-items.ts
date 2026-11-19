@@ -26,12 +26,7 @@ export const NAV_SECTIONS: { title?: string; items: NavItem[] }[] = [
       { href: "/gastos", label: "Gastos fixos", icon: Receipt },
       { href: "/cartoes", label: "Cartões", icon: CreditCard },
       { href: "/caixinhas", label: "Caixinhas", icon: PiggyBank },
-    ],
-  },
-  {
-    title: "Em breve",
-    items: [
-      { href: "/simulador", label: "Simulador", icon: Calculator, soon: true },
+      { href: "/simulador", label: "Simulador", icon: Calculator },
     ],
   },
   {

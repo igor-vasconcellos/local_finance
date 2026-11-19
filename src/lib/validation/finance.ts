@@ -198,3 +198,29 @@ export const boxTxSchema = z.object({
 
 export type BoxInput = z.infer<typeof boxSchema>;
 export type BoxTxInput = z.infer<typeof boxTxSchema>;
+
+// -------------------------------------------------------------- Simulações --
+
+export const simulationSchema = z
+  .object({
+    description: name("o que você quer comprar"),
+    paymentMethod: z.enum(["credit", "debit"]),
+    cardId: z
+      .string()
+      .optional()
+      .transform((v) => (v ? Number(v) : null)),
+    categoryId: optionalId,
+    total: moneyField("o valor"),
+    installmentsCount: z.coerce.number().int().min(1).max(48).catch(1),
+    purchaseDate: dateField,
+  })
+  .superRefine((d, ctx) => {
+    if (d.paymentMethod === "credit" && !d.cardId) {
+      ctx.addIssue({ code: "custom", path: ["cardId"], message: "Escolha o cartão." });
+    }
+  })
+  .transform((d) =>
+    d.paymentMethod === "debit" ? { ...d, cardId: null, installmentsCount: 1 } : d,
+  );
+
+export type SimulationInput = z.infer<typeof simulationSchema>;

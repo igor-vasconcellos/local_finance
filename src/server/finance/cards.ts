@@ -15,7 +15,7 @@ import {
 import { splitInstallments } from "@/lib/money";
 import type { CardInput, PurchaseInput } from "@/lib/validation/finance";
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 // ------------------------------------------------------------- Status --
 
@@ -227,12 +227,19 @@ function purchaseValues(input: PurchaseInput) {
   };
 }
 
+/** Cria a compra e suas parcelas dentro de uma transação já aberta. */
+export function createPurchaseTx(tx: Tx, input: PurchaseInput, simulationId: number | null = null) {
+  const { id } = tx
+    .insert(cardPurchases)
+    .values({ ...purchaseValues(input), simulationId })
+    .returning({ id: cardPurchases.id })
+    .get();
+  generateInstallments(tx, id, input);
+  return { id };
+}
+
 export function createPurchase(input: PurchaseInput) {
-  return db.transaction((tx) => {
-    const { id } = tx.insert(cardPurchases).values(purchaseValues(input)).returning({ id: cardPurchases.id }).get();
-    generateInstallments(tx, id, input);
-    return { id };
-  });
+  return db.transaction((tx) => createPurchaseTx(tx, input));
 }
 
 /** Editar uma compra recalcula todas as parcelas (valor, quantidade, data ou cartão). */
