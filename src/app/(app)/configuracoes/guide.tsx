@@ -3,6 +3,7 @@ import {
   Calculator,
   ChevronDown,
   CreditCard,
+  FileUp,
   FileBarChart,
   Keyboard,
   LayoutDashboard,
@@ -140,6 +141,36 @@ const TOPICS: Topic[] = [
           Regras: compra <strong>antes</strong> do fechamento entra na fatura do mês; <strong>no dia</strong> do fechamento ou depois, na
           seguinte. A fatura é identificada pelo mês do vencimento. Limite comprometido inclui parcelas futuras.
         </p>
+      </>
+    ),
+  },
+  {
+    icon: FileUp,
+    title: "Importar fatura do banco",
+    summary: "Envie o arquivo da fatura e as compras são lançadas sozinhas.",
+    href: "/cartoes",
+    linkLabel: "Abrir Cartões",
+    body: (
+      <>
+        <ol>
+          <li>
+            Baixe a fatura no app do banco: <strong>Nubank</strong> em CSV; <strong>PicPay</strong> e <strong>Mercado Pago</strong> em PDF.
+          </li>
+          <li>
+            Abra o cartão e clique em <strong>Importar fatura</strong> (ou use o botão na página Cartões e escolha o cartão).
+          </li>
+          <li>
+            Confira a prévia: o app soma o que leu e compara com o total da fatura (“Leitura conferida”). Ajuste descrições e categorias se
+            quiser e clique em <strong>Importar</strong>.
+          </li>
+        </ol>
+        <p>
+          O pagamento da fatura é ignorado, créditos e estornos abatem o total, e a parcela “3/10” vira a compra completa em 10x (as faturas
+          antigas ficam pagas). Linhas já importadas não entram de novo, e compras iguais que você lançou à mão aparecem como “possível
+          duplicada”. As categorias que você escolhe são lembradas para as próximas faturas. Errou? Em <strong>Importações</strong>, na
+          página do cartão, use <strong>Desfazer</strong>.
+        </p>
+        <p>O arquivo é lido no seu computador e não fica guardado.</p>
       </>
     ),
   },

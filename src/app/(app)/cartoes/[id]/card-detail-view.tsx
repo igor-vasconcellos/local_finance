@@ -3,6 +3,8 @@
 import {
   ArrowLeft,
   CheckCircle2,
+  FileUp,
+  History,
   Pause,
   Pencil,
   Play,
@@ -34,7 +36,9 @@ import {
   setInvoicePaidAction,
   toggleCardAction,
 } from "@/server/actions/cards";
+import { deleteCreditAction, undoImportAction } from "@/server/actions/imports";
 import type { getInvoiceDetail, PurchaseRow } from "@/server/finance/cards";
+import type { ImportHistoryRow } from "@/server/import/service";
 import type { CategoryOption } from "@/server/finance/categories";
 
 type Invoice = NonNullable<ReturnType<typeof getInvoiceDetail>>;
@@ -66,6 +70,7 @@ export function CardDetailView({
   cardOptions,
   categories,
   institutions,
+  imports,
   today,
 }: {
   card: CardData;
@@ -75,6 +80,7 @@ export function CardDetailView({
   cardOptions: CardOption[];
   categories: CategoryOption[];
   institutions: string[];
+  imports: ImportHistoryRow[];
   today: ISODate;
 }) {
   const [dialog, setDialog] = useState<DialogState>(null);
@@ -136,6 +142,12 @@ export function CardDetailView({
             <Button onClick={() => setDialog({ kind: "newPurchase" })} disabled={!card.active}>
               <Plus aria-hidden /> Lançar compra
             </Button>
+            <Link
+              href={`/cartoes/${card.id}/importar`}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium shadow-xs hover:bg-muted [&_svg]:size-4"
+            >
+              <FileUp aria-hidden /> Importar fatura
+            </Link>
             <Button variant="secondary" onClick={() => setDialog({ kind: "editCard" })}>
               <Pencil aria-hidden /> Editar
             </Button>
@@ -225,7 +237,7 @@ export function CardDetailView({
           </div>
         </div>
 
-        {invoice.items.length === 0 ? (
+        {invoice.items.length === 0 && invoice.credits.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-5 py-12 text-center text-sm text-muted-foreground">
             <ReceiptText className="size-6" aria-hidden />
             Nenhum lançamento nesta fatura.
@@ -249,7 +261,34 @@ export function CardDetailView({
                 <p className="text-sm font-semibold tabular-nums">{formatBRL(it.amountCents)}</p>
               </li>
             ))}
+            {invoice.credits.map((c) => (
+              <li key={`c${c.id}`} className="flex items-center gap-4 px-5 py-3">
+                <span className="w-12 shrink-0 text-xs text-muted-foreground tabular-nums">{formatDayMonth(c.creditDate)}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{c.description}</p>
+                  <Badge tone="success">Crédito/estorno</Badge>
+                </div>
+                <p className="text-sm font-semibold text-success tabular-nums">− {formatBRL(c.amountCents)}</p>
+                <ConfirmAction
+                  action={deleteCreditAction}
+                  fields={{ id: c.id, cardId: card.id }}
+                  title="Excluir crédito?"
+                  description={`“${c.description}” deixa de abater ${formatBRL(c.amountCents)} desta fatura.`}
+                  trigger={(open) => (
+                    <IconButton label="Excluir crédito" tone="danger" onClick={open}>
+                      <Trash2 />
+                    </IconButton>
+                  )}
+                />
+              </li>
+            ))}
           </ul>
+        )}
+        {invoice.creditsCents > 0 && (
+          <div className="flex justify-between border-t px-5 py-3 text-sm text-muted-foreground">
+            <span>Compras {formatBRL(invoice.chargesCents)} − créditos {formatBRL(invoice.creditsCents)}</span>
+            <span className="font-semibold text-foreground tabular-nums">{formatBRL(invoice.totalCents)}</span>
+          </div>
         )}
       </Card>
 
@@ -282,6 +321,7 @@ export function CardDetailView({
                       <Badge>À vista</Badge>
                     )}
                     {p.remainingCount === 0 && <Badge tone="success">Quitada</Badge>}
+                    {p.importId && <Badge>Importada</Badge>}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span>Compra em {formatDate(p.purchaseDate)}</span>
@@ -324,6 +364,44 @@ export function CardDetailView({
           </ul>
         )}
       </Card>
+
+      {imports.length > 0 && (
+        <Card className="mt-8">
+          <div className="flex items-center gap-2 border-b px-5 py-4">
+            <History className="size-4 text-muted-foreground" aria-hidden />
+            <h2 className="font-semibold">Importações</h2>
+          </div>
+          <ul className="divide-y">
+            {imports.map((imp) => (
+              <li key={imp.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                    <Badge tone="primary">{imp.bankLabel}</Badge>
+                    Fatura de {formatMonthShort(imp.referenceMonth)}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {imp.fileName} · {formatDate(imp.createdAt.slice(0, 10))} · {imp.purchasesCount} compra{imp.purchasesCount === 1 ? "" : "s"}
+                    {imp.creditsCount > 0 && ` · ${imp.creditsCount} crédito${imp.creditsCount === 1 ? "" : "s"}`}
+                  </p>
+                </div>
+                <span className="text-sm font-semibold tabular-nums">{formatBRL(imp.netCents)}</span>
+                <ConfirmAction
+                  action={undoImportAction}
+                  fields={{ id: imp.id, cardId: card.id }}
+                  title="Desfazer importação?"
+                  description={`Remove as ${imp.purchasesCount} compras${imp.creditsCount ? ` e ${imp.creditsCount} créditos` : ""} criadas por esta importação (inclusive parcelas futuras) e reabre as faturas que ela marcou como pagas.`}
+                  confirmLabel="Desfazer"
+                  trigger={(open) => (
+                    <Button variant="ghost" size="sm" onClick={open}>
+                      <RotateCcw aria-hidden /> Desfazer
+                    </Button>
+                  )}
+                />
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Dialog
         open={dialog !== null}

@@ -5,8 +5,14 @@ const nextConfig: NextConfig = {
   // da sessão e do banco), então não usamos Cache Components / PPR.
   // Mantemos o modelo de renderização dinâmica padrão, mais simples e previsível.
 
-  // better-sqlite3 é um módulo nativo: deve ser carregado pelo Node, não empacotado.
-  serverExternalPackages: ["better-sqlite3"],
+  // better-sqlite3 é um módulo nativo e o pdfjs-dist (leitura das faturas em PDF)
+  // carrega o próprio worker: os dois devem ser carregados pelo Node, não empacotados.
+  serverExternalPackages: ["better-sqlite3", "pdfjs-dist"],
+
+  experimental: {
+    // Faturas em PDF passam de 1 MB (limite padrão das Server Actions).
+    serverActions: { bodySizeLimit: "10mb" },
+  },
 
   poweredByHeader: false,
 

@@ -6,12 +6,13 @@ import {
   categories,
   creditCards,
   installments,
+  invoiceCredits,
   invoices,
   oneTimeExpenses,
 } from "@/db/schema";
 import { dayOfMonth, todayISO, type ISODate, type Month } from "@/lib/dates";
 import { goalsForMonth, totalReserve } from "./boxes";
-import { invoiceStatus, type InvoiceStatus } from "./cards";
+import { invoiceNetTotalSql, invoiceStatus, type InvoiceStatus } from "./cards";
 import { expenseAppliesTo, listExpenses } from "./expenses";
 import { incomeAppliesTo, listIncomes } from "./incomes";
 import { getSettings } from "./settings";
@@ -57,7 +58,7 @@ function monthInvoices(month: Month, today: ISODate): MonthInvoice[] {
       dueDate: invoices.dueDate,
       closingDate: invoices.closingDate,
       status: invoices.status,
-      totalCents: sql<number>`coalesce(${sum(installments.amountCents)}, 0)`.mapWith(Number),
+      totalCents: invoiceNetTotalSql,
     })
     .from(invoices)
     .innerJoin(creditCards, eq(creditCards.id, invoices.cardId))
@@ -78,7 +79,13 @@ function cardDebts(): number {
     .innerJoin(invoices, eq(invoices.id, installments.invoiceId))
     .where(ne(invoices.status, "paid"))
     .get();
-  return row?.total ?? 0;
+  const credits = db
+    .select({ total: sql<number>`coalesce(${sum(invoiceCredits.amountCents)}, 0)`.mapWith(Number) })
+    .from(invoiceCredits)
+    .innerJoin(invoices, eq(invoices.id, invoiceCredits.invoiceId))
+    .where(ne(invoices.status, "paid"))
+    .get();
+  return Math.max(0, (row?.total ?? 0) - (credits?.total ?? 0));
 }
 
 function oneTimeInMonth(month: Month) {
@@ -241,6 +248,17 @@ export function getCategoryReport(month: Month): { rows: CategoryReportRow[]; to
       detail: `${p.cardName}${p.count > 1 ? ` · parcela ${p.number}/${p.count}` : ""}`,
       amountCents: p.amountCents,
     });
+  }
+
+  const credits = db
+    .select({ description: invoiceCredits.description, amountCents: invoiceCredits.amountCents, cardName: creditCards.name })
+    .from(invoiceCredits)
+    .innerJoin(invoices, eq(invoices.id, invoiceCredits.invoiceId))
+    .innerJoin(creditCards, eq(creditCards.id, invoices.cardId))
+    .where(eq(invoices.referenceMonth, month))
+    .all();
+  for (const c of credits) {
+    add("Créditos e estornos", "#10b981", { label: c.description, source: "cartão", detail: c.cardName, amountCents: -c.amountCents });
   }
 
   for (const o of oneTimeInMonth(month)) {

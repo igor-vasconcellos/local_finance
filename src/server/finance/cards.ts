@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, count, eq, inArray, ne, notExists, sql, sum } from "drizzle-orm";
 import { db } from "@/db/client";
-import { cardPurchases, categories, creditCards, installments, institutions, invoices } from "@/db/schema";
+import { cardPurchases, categories, creditCards, installments, institutions, invoiceCredits, invoices } from "@/db/schema";
 import {
   addMonths,
   firstInvoiceFor,
@@ -38,6 +38,14 @@ export function slotForReferenceMonth(ref: Month, closingDay: number, dueDay: nu
   return invoiceForClosingMonth(closingMonth, closingDay, dueDay);
 }
 
+// ------------------------------------------------------- Créditos/Totais --
+
+/** Créditos e estornos da fatura (subconsulta correlacionada com `invoices`). */
+export const invoiceCreditsSql = sql<number>`(select coalesce(sum(${invoiceCredits.amountCents}), 0) from ${invoiceCredits} where ${invoiceCredits.invoiceId} = ${invoices.id})`;
+
+/** Total da fatura = parcelas − créditos (nunca negativo). Requer LEFT JOIN em installments + GROUP BY invoices.id. */
+export const invoiceNetTotalSql = sql<number>`max(0, coalesce(${sum(installments.amountCents)}, 0) - ${invoiceCreditsSql})`.mapWith(Number);
+
 // ------------------------------------------------------------- Cartões --
 
 export type CardSummary = typeof creditCards.$inferSelect & {
@@ -54,7 +62,7 @@ function invoiceTotals(cardId: number) {
       status: invoices.status,
       closingDate: invoices.closingDate,
       dueDate: invoices.dueDate,
-      totalCents: sql<number>`coalesce(${sum(installments.amountCents)}, 0)`.mapWith(Number),
+      totalCents: invoiceNetTotalSql,
     })
     .from(invoices)
     .leftJoin(installments, eq(installments.invoiceId, invoices.id))
@@ -170,7 +178,7 @@ export function deleteCard(id: number) {
 
 // ------------------------------------------------------------- Compras --
 
-function getOrCreateInvoice(tx: Tx, cardId: number, slot: InvoiceSlot): number {
+export function getOrCreateInvoice(tx: Tx, cardId: number, slot: InvoiceSlot): number {
   tx.insert(invoices)
     .values({ cardId, referenceMonth: slot.referenceMonth, closingDate: slot.closingDate, dueDate: slot.dueDate })
     .onConflictDoNothing()
@@ -182,12 +190,20 @@ function getOrCreateInvoice(tx: Tx, cardId: number, slot: InvoiceSlot): number {
     .get()!.id;
 }
 
-/** Gera as parcelas da compra, cada uma na fatura do mês correspondente. */
-function generateInstallments(tx: Tx, purchaseId: number, input: PurchaseInput) {
+/**
+ * Gera as parcelas da compra, cada uma na fatura do mês correspondente.
+ * `firstInvoiceMonth` (compras importadas) fixa a fatura da 1ª parcela, como o banco informou;
+ * sem ele, a fatura sai da data da compra e do dia de fechamento do cartão.
+ */
+export function generateInstallments(tx: Tx, purchaseId: number, input: PurchaseInput, firstInvoiceMonth: Month | null = null) {
   const card = tx.select().from(creditCards).where(eq(creditCards.id, input.cardId)).get();
   if (!card) throw new Error("Cartão não encontrado.");
 
-  const schedule = installmentSchedule(input.purchaseDate, input.installmentsCount, card.closingDay, card.dueDay);
+  const schedule = firstInvoiceMonth
+    ? Array.from({ length: input.installmentsCount }, (_, i) =>
+        slotForReferenceMonth(addMonths(firstInvoiceMonth, i), card.closingDay, card.dueDay),
+      )
+    : installmentSchedule(input.purchaseDate, input.installmentsCount, card.closingDay, card.dueDay);
   const amounts = splitInstallments(input.total, input.installmentsCount);
 
   schedule.forEach((slot, i) => {
@@ -202,14 +218,15 @@ function generateInstallments(tx: Tx, purchaseId: number, input: PurchaseInput) 
   });
 }
 
-/** Remove faturas vazias que não foram marcadas como pagas. */
-function cleanupEmptyInvoices(tx: Tx, cardId: number) {
+/** Remove faturas vazias (sem parcelas nem créditos) que não foram marcadas como pagas. */
+export function cleanupEmptyInvoices(tx: Tx, cardId: number) {
   tx.delete(invoices)
     .where(
       and(
         eq(invoices.cardId, cardId),
         ne(invoices.status, "paid"),
         notExists(tx.select({ x: sql`1` }).from(installments).where(eq(installments.invoiceId, invoices.id))),
+        notExists(tx.select({ x: sql`1` }).from(invoiceCredits).where(eq(invoiceCredits.invoiceId, invoices.id))),
       ),
     )
     .run();
@@ -245,11 +262,17 @@ export function createPurchase(input: PurchaseInput) {
 /** Editar uma compra recalcula todas as parcelas (valor, quantidade, data ou cartão). */
 export function updatePurchase(id: number, input: PurchaseInput) {
   return db.transaction((tx) => {
-    const before = tx.select({ cardId: cardPurchases.cardId }).from(cardPurchases).where(eq(cardPurchases.id, id)).get();
+    const before = tx
+      .select({ cardId: cardPurchases.cardId, firstInvoiceMonth: cardPurchases.firstInvoiceMonth })
+      .from(cardPurchases)
+      .where(eq(cardPurchases.id, id))
+      .get();
     if (!before) return false;
+    // Fatura fixada pelo banco só vale no mesmo cartão.
+    const firstInvoiceMonth = before.cardId === input.cardId ? before.firstInvoiceMonth : null;
     tx.delete(installments).where(eq(installments.purchaseId, id)).run();
-    tx.update(cardPurchases).set(purchaseValues(input)).where(eq(cardPurchases.id, id)).run();
-    generateInstallments(tx, id, input);
+    tx.update(cardPurchases).set({ ...purchaseValues(input), firstInvoiceMonth }).where(eq(cardPurchases.id, id)).run();
+    generateInstallments(tx, id, input, firstInvoiceMonth);
     cleanupEmptyInvoices(tx, before.cardId);
     if (before.cardId !== input.cardId) cleanupEmptyInvoices(tx, input.cardId);
     return true;
@@ -332,15 +355,50 @@ export function getInvoiceDetail(cardId: number, referenceMonth: Month, today: I
         .all()
     : [];
 
+  const credits = row
+    ? db
+        .select({
+          id: invoiceCredits.id,
+          description: invoiceCredits.description,
+          creditDate: invoiceCredits.creditDate,
+          amountCents: invoiceCredits.amountCents,
+        })
+        .from(invoiceCredits)
+        .where(eq(invoiceCredits.invoiceId, row.id))
+        .orderBy(asc(invoiceCredits.creditDate), asc(invoiceCredits.id))
+        .all()
+    : [];
+
+  const chargesCents = items.reduce((acc, i) => acc + i.amountCents, 0);
+  const creditsCents = credits.reduce((acc, c) => acc + c.amountCents, 0);
   return {
     referenceMonth,
     closingDate: slot.closingDate,
     dueDate: slot.dueDate,
     status: invoiceStatus(slot, today),
     exists: Boolean(row),
-    totalCents: items.reduce((acc, i) => acc + i.amountCents, 0),
+    chargesCents,
+    creditsCents,
+    totalCents: Math.max(0, chargesCents - creditsCents),
     items,
+    credits,
   };
+}
+
+/** Exclui um crédito/estorno de uma fatura do cartão. */
+export function deleteInvoiceCredit(cardId: number, creditId: number) {
+  return db.transaction((tx) => {
+    const row = tx
+      .select({ id: invoiceCredits.id })
+      .from(invoiceCredits)
+      .innerJoin(invoices, eq(invoices.id, invoiceCredits.invoiceId))
+      .where(and(eq(invoiceCredits.id, creditId), eq(invoices.cardId, cardId)))
+      .get();
+    if (!row) return false;
+    tx.delete(invoiceCredits).where(eq(invoiceCredits.id, creditId)).run();
+    cleanupEmptyInvoices(tx, cardId);
+    return true;
+  });
 }
 
 export function setInvoicePaid(cardId: number, referenceMonth: Month, paid: boolean) {

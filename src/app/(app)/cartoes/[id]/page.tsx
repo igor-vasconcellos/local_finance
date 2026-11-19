@@ -10,6 +10,7 @@ import {
   listInvoiceMonths,
   listPurchases,
 } from "@/server/finance/cards";
+import { listImports } from "@/server/import/service";
 import { CardDetailView } from "./card-detail-view";
 
 export async function generateMetadata({ params }: PageProps<"/cartoes/[id]">): Promise<Metadata> {
@@ -53,6 +54,7 @@ export default async function CardDetailPage({ params, searchParams }: PageProps
       cardOptions={cardOptions}
       categories={listCategories("expense")}
       institutions={listInstitutionNames()}
+      imports={listImports(card.id)}
       today={today}
     />
   );

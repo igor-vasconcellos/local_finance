@@ -117,6 +117,22 @@ reinicie o servidor. Se o SMTP falhar, o código é impresso no terminal como fa
   gráfico, coluna “Simulações” na tabela e parcelas “Simulado” nos vencimentos).
 - A navegação ← → anda 1, 6 ou 12 meses conforme a aba; “Hoje” volta ao período atual.
 
+### Importação de fatura (Etapa 7)
+
+- **Cartões → (cartão) → Importar fatura** (ou o botão na página Cartões).
+- Formatos: **Nubank (CSV)**, **PicPay (PDF)** e **Mercado Pago (PDF)**, com o banco detectado
+  pelo conteúdo. O PDF é lido localmente com o `pdfjs-dist`, sem internet.
+- **Prévia antes de gravar:** fatura de destino (vencimento/fechamento do arquivo), conferência
+  da soma com o total informado pelo banco, cartão final (titular/adicional), parcela, categoria
+  sugerida e selos (pagamento ignorado, crédito/estorno, já importada, possível duplicada).
+- **Regras:** a fatura informada pelo banco manda; “Parcela k/n” cria a compra completa e marca
+  as faturas anteriores como pagas; créditos e estornos abatem o total da fatura em todo o app
+  (painel, previsão, limite e relatórios); categorias escolhidas viram regras aprendidas; aviso
+  e opção de atualizar o cartão quando o fechamento do banco é diferente do cadastrado.
+- **Histórico e Desfazer** na página do cartão.
+- Faturas reais têm dados pessoais e **nunca** entram no repositório: os testes usam cópias do
+  formato com dados fictícios.
+
 ### Interface
 
 - **Datas** sempre em dd/mm/aaaa (independe do idioma do navegador): digite só os
@@ -233,3 +249,4 @@ Ao acessar por HTTPS, ajuste no `.env`: `APP_URL=<url https>` e `COOKIE_SECURE=t
 - [x] **Etapa 4** — Caixinhas com rendimento CDI e histórico de aportes
 - [x] **Etapa 5** — Simulador (crédito e débito) + farol + efetivação
 - [x] **Etapa 6** — Dashboards mensal / semestral / anual, real vs. simulado
+- [x] **Etapa 7** — Importação de fatura (Nubank CSV, PicPay e Mercado Pago PDF)

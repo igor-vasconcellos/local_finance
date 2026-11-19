@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, gte, lte, sql, sum } from "drizzle-orm";
 import { db } from "@/db/client";
-import { installments, invoices, oneTimeExpenses, simulationInstallments, simulations } from "@/db/schema";
+import { installments, invoiceCredits, invoices, oneTimeExpenses, simulationInstallments, simulations } from "@/db/schema";
 import { addMonths, todayISO, type ISODate, type Month } from "@/lib/dates";
 import { healthOf, type Health } from "@/lib/health";
 import { goalsForMonth } from "./boxes";
@@ -50,6 +50,17 @@ export function projectMonths(from: Month, count: number, today: ISODate = today
       .groupBy(invoices.referenceMonth)
       .all(),
   );
+
+  const creditTotals = byMonth(
+    db
+      .select({ month: invoices.referenceMonth, total: sql<number>`coalesce(${sum(invoiceCredits.amountCents)}, 0)`.mapWith(Number) })
+      .from(invoiceCredits)
+      .innerJoin(invoices, eq(invoices.id, invoiceCredits.invoiceId))
+      .where(and(gte(invoices.referenceMonth, from), lte(invoices.referenceMonth, to)))
+      .groupBy(invoices.referenceMonth)
+      .all(),
+  );
+  for (const [m, credit] of creditTotals) invoiceTotals.set(m, Math.max(0, (invoiceTotals.get(m) ?? 0) - credit));
 
   const oneTimeTotals = byMonth(
     db

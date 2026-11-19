@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, CreditCard, Plus } from "lucide-react";
+import { ChevronRight, CreditCard, FileUp, Plus } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { CardForm } from "@/components/finance/card-form";
@@ -17,7 +17,10 @@ import type { CardSummary } from "@/server/finance/cards";
 
 export function CardsView({ cards, institutions }: { cards: CardSummary[]; institutions: string[] }) {
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const close = useCallback(() => setCreating(false), []);
+  const closeImport = useCallback(() => setImporting(false), []);
+  const activeCards = cards.filter((c) => c.active);
 
   const newButton = (
     <Button onClick={() => setCreating(true)}>
@@ -38,7 +41,14 @@ export function CardsView({ cards, institutions }: { cards: CardSummary[]; insti
         <>
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-semibold">Seus cartões</h2>
-            {newButton}
+            <div className="flex gap-2">
+              {activeCards.length > 0 && (
+                <Button variant="secondary" onClick={() => setImporting(true)}>
+                  <FileUp aria-hidden /> Importar fatura
+                </Button>
+              )}
+              {newButton}
+            </div>
           </div>
           <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {cards.map((c) => {
@@ -100,6 +110,23 @@ export function CardsView({ cards, institutions }: { cards: CardSummary[]; insti
 
       <Dialog open={creating} onClose={close} title="Novo cartão">
         {creating && <CardForm institutions={institutions} onDone={close} />}
+      </Dialog>
+      <Dialog open={importing} onClose={closeImport} title="Importar fatura" description="Para qual cartão é a fatura?">
+        <ul className="grid gap-2">
+          {activeCards.map((c) => (
+            <li key={c.id}>
+              <Link
+                href={`/cartoes/${c.id}/importar`}
+                className="flex items-center gap-3 rounded-lg border px-4 py-3 text-sm font-medium hover:bg-muted"
+              >
+                <span className="size-3 rounded-full" style={{ background: c.color ?? "var(--primary)" }} aria-hidden />
+                <span className="flex-1">{c.name}</span>
+                {c.institutionName && <span className="text-xs text-muted-foreground">{c.institutionName}</span>}
+                <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
+              </Link>
+            </li>
+          ))}
+        </ul>
       </Dialog>
     </>
   );

@@ -17,6 +17,8 @@ export default async function ReportPage({ searchParams }: PageProps<"/relatorio
   const requested = (await searchParams).mes;
   const month = typeof requested === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(requested) ? requested : current;
   const { rows, totalCents } = getCategoryReport(month);
+  // Créditos/estornos entram negativos: a participação é calculada sobre os gastos brutos.
+  const grossCents = rows.filter((r) => r.totalCents > 0).reduce((a, r) => a + r.totalCents, 0) || 1;
   const bySource = (s: keyof typeof SOURCE_LABEL) =>
     rows.flatMap((r) => r.items).filter((i) => i.source === s).reduce((a, i) => a + i.amountCents, 0);
 
@@ -42,11 +44,11 @@ export default async function ReportPage({ searchParams }: PageProps<"/relatorio
           {/* Barra empilhada com a participação de cada categoria */}
           <Card className="mb-6 p-5">
             <div className="flex h-3 overflow-hidden rounded-full bg-muted" role="img" aria-label="Participação de cada categoria no total">
-              {rows.map((r) => (
+              {rows.filter((r) => r.totalCents > 0).map((r) => (
                 <div
                   key={r.name}
-                  title={`${r.name}: ${formatPct((r.totalCents / totalCents) * 100, 1)}`}
-                  style={{ width: `${(r.totalCents / totalCents) * 100}%`, background: r.color ?? "var(--muted-foreground)" }}
+                  title={`${r.name}: ${formatPct((r.totalCents / grossCents) * 100, 1)}`}
+                  style={{ width: `${(r.totalCents / grossCents) * 100}%`, background: r.color ?? "var(--muted-foreground)" }}
                 />
               ))}
             </div>
@@ -60,7 +62,7 @@ export default async function ReportPage({ searchParams }: PageProps<"/relatorio
             </div>
             <ul className="divide-y">
               {rows.map((r) => {
-                const pct = (r.totalCents / totalCents) * 100;
+                const pct = (r.totalCents / grossCents) * 100;
                 return (
                   <li key={r.name}>
                     <details className="group">
@@ -71,7 +73,7 @@ export default async function ReportPage({ searchParams }: PageProps<"/relatorio
                           <span className="truncate font-medium">{r.name}</span>
                           <span className="text-xs text-muted-foreground">{r.items.length}</span>
                         </span>
-                        <span className="w-16 text-right text-sm tabular-nums text-muted-foreground">{formatPct(pct, 1)}</span>
+                        <span className="w-16 text-right text-sm tabular-nums text-muted-foreground">{pct > 0 ? formatPct(pct, 1) : "—"}</span>
                         <span className="w-28 text-right font-semibold tabular-nums">{formatBRL(r.totalCents)}</span>
                       </summary>
                       <ul className="border-t bg-muted/25">

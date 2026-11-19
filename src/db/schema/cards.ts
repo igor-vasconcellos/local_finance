@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
+import { check, index, integer, sqliteTable, text, unique, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 import { createdAt, DATE_GLOB, id, MONTH_GLOB, timestamps } from "./_helpers";
 import { categories, institutions } from "./base";
 import { simulations } from "./simulations";
@@ -73,10 +73,23 @@ export const cardPurchases = sqliteTable(
       .unique()
       .references(() => simulations.id, { onDelete: "set null" }),
     notes: text("notes"),
+    /** Importação de fatura que criou a compra (para "Desfazer importação"). */
+    importId: integer("import_id").references((): AnySQLiteColumn => invoiceImports.id, { onDelete: "set null" }),
+    /** Impressão digital da linha do arquivo do banco: evita importar a mesma compra duas vezes. */
+    importKey: text("import_key"),
+    /**
+     * Fatura (mês de vencimento) da 1ª parcela, quando definida pelo banco.
+     * Nulo = calculada pelo dia de fechamento do cartão (compras lançadas à mão).
+     * (Sem CHECK de formato: adicionar CHECK exigiria recriar a tabela na migração.)
+     */
+    firstInvoiceMonth: text("first_invoice_month"),
     ...timestamps(),
   },
   (t) => [
     index("card_purchases_card_idx").on(t.cardId),
+    index("card_purchases_import_idx").on(t.importId),
+    unique("card_purchases_import_key_uq").on(t.cardId, t.importKey),
+
     check("purchases_total_positive", sql`${t.totalCents} > 0`),
     check("purchases_installments_range", sql`${t.installmentsCount} BETWEEN 1 AND 48`),
     check("purchases_date_fmt", sql`${t.purchaseDate} GLOB '${sql.raw(DATE_GLOB)}'`),
@@ -103,4 +116,73 @@ export const installments = sqliteTable(
     check("installments_number_positive", sql`${t.number} >= 1`),
     check("installments_amount_positive", sql`${t.amountCents} > 0`),
   ],
+);
+
+/** Bancos com leitor de fatura. */
+export const IMPORT_BANKS = ["nubank", "picpay", "mercadopago"] as const;
+export type ImportBank = (typeof IMPORT_BANKS)[number];
+
+/** Histórico de importações de fatura (arquivo do banco → compras do cartão). */
+export const invoiceImports = sqliteTable(
+  "invoice_imports",
+  {
+    id: id(),
+    cardId: integer("card_id")
+      .notNull()
+      .references(() => creditCards.id, { onDelete: "cascade" }),
+    bank: text("bank", { enum: IMPORT_BANKS }).notNull(),
+    fileName: text("file_name").notNull(),
+    referenceMonth: text("reference_month").notNull(),
+    purchasesCount: integer("purchases_count").notNull().default(0),
+    creditsCount: integer("credits_count").notNull().default(0),
+    /** Compras − créditos importados, em centavos. */
+    netCents: integer("net_cents").notNull().default(0),
+    /** Faturas que a importação marcou como pagas (JSON de ids), para reverter ao desfazer. */
+    paidInvoiceIds: text("paid_invoice_ids").notNull().default("[]"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("invoice_imports_card_idx").on(t.cardId),
+    check("invoice_imports_bank", sql`${t.bank} IN ('nubank', 'picpay', 'mercadopago')`),
+    check("invoice_imports_month_fmt", sql`${t.referenceMonth} GLOB '${sql.raw(MONTH_GLOB)}'`),
+    check("invoice_imports_counts", sql`${t.purchasesCount} >= 0 AND ${t.creditsCount} >= 0`),
+  ],
+);
+
+/** Créditos e estornos da fatura: descontados do total. */
+export const invoiceCredits = sqliteTable(
+  "invoice_credits",
+  {
+    id: id(),
+    invoiceId: integer("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "cascade" }),
+    description: text("description").notNull(),
+    creditDate: text("credit_date").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    importId: integer("import_id").references(() => invoiceImports.id, { onDelete: "set null" }),
+    importKey: text("import_key"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("invoice_credits_invoice_idx").on(t.invoiceId),
+    index("invoice_credits_import_idx").on(t.importId),
+    unique("invoice_credits_import_key_uq").on(t.invoiceId, t.importKey),
+    check("invoice_credits_amount_positive", sql`${t.amountCents} > 0`),
+    check("invoice_credits_date_fmt", sql`${t.creditDate} GLOB '${sql.raw(DATE_GLOB)}'`),
+  ],
+);
+
+/** Regras aprendidas: estabelecimento (normalizado) → categoria. */
+export const merchantRules = sqliteTable(
+  "merchant_rules",
+  {
+    id: id(),
+    merchantKey: text("merchant_key").notNull().unique(),
+    categoryId: integer("category_id")
+      .notNull()
+      .references(() => categories.id, { onDelete: "cascade" }),
+    ...timestamps(),
+  },
+  (t) => [check("merchant_rules_key_nonempty", sql`length(${t.merchantKey}) > 0`)],
 );
