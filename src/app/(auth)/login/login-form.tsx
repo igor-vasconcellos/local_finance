@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,9 @@ export function LoginForm() {
           required
         />
       </Field>
+      <Link href="/esqueci-senha" className="-mt-2 justify-self-end text-sm font-medium text-primary hover:underline">
+        Esqueci minha senha
+      </Link>
 
       <Button type="submit" size="lg" className="mt-2 w-full" loading={pending}>
         {pending ? "Verificando…" : "Continuar"}

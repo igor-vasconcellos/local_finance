@@ -1,62 +1,84 @@
 import "server-only";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
-import { users } from "@/db/schema";
+import { seedUserDefaults } from "@/db/defaults";
+import { sessions, users } from "@/db/schema";
 import { DUMMY_HASH, hashPassword, verifyPassword } from "./password";
 
 export const MAX_FAILED_LOGINS = 5;
 export const LOCKOUT_MINUTES = 15;
-export const MASTER_USER_ID = 1;
 
 export type PublicUser = { id: number; name: string; email: string; avatarColor: string | null };
 
-export function hasMasterUser(): boolean {
-  const row = db.select({ n: sql<number>`count(*)` }).from(users).get();
-  return (row?.n ?? 0) > 0;
-}
+const publicCols = { id: users.id, name: users.name, email: users.email, avatarColor: users.avatarColor };
 
 export function getUserById(id: number): PublicUser | undefined {
+  return db.select(publicCols).from(users).where(eq(users.id, id)).get();
+}
+
+/** Conta com e-mail já confirmado (as não confirmadas não podem trocar senha nem entrar). */
+export function findVerifiedUserByEmail(email: string): PublicUser | undefined {
   return db
-    .select({ id: users.id, name: users.name, email: users.email, avatarColor: users.avatarColor })
+    .select(publicCols)
     .from(users)
-    .where(eq(users.id, id))
+    .where(and(eq(users.email, email.trim().toLowerCase()), isNotNull(users.emailVerifiedAt)))
     .get();
 }
 
-export type CreateMasterResult = { ok: true; user: PublicUser } | { ok: false; reason: "already_exists" };
+export type RegisterResult = { ok: true; user: PublicUser } | { ok: false; reason: "already_exists" };
 
-/** Cria o usuário master. Só funciona uma vez (o banco também garante via CHECK id = 1). */
-export async function createMasterUser(input: {
-  name: string;
-  email: string;
-  password: string;
-}): Promise<CreateMasterResult> {
-  if (hasMasterUser()) return { ok: false, reason: "already_exists" };
-
+/**
+ * Cria a conta (ainda NÃO confirmada). Se já existe uma conta não confirmada com o
+ * mesmo e-mail (cadastro abandonado), ela é reaproveitada com o novo nome e senha.
+ */
+export async function registerUser(input: { name: string; email: string; password: string }): Promise<RegisterResult> {
+  const email = input.email.trim().toLowerCase();
   const passwordHash = await hashPassword(input.password);
+  const existing = db.select().from(users).where(eq(users.email, email)).get();
+  if (existing?.emailVerifiedAt) return { ok: false, reason: "already_exists" };
+
   try {
-    const user = db
-      .insert(users)
-      .values({
-        id: MASTER_USER_ID,
-        name: input.name.trim(),
-        email: input.email.trim().toLowerCase(),
-        passwordHash,
-      })
-      .returning({ id: users.id, name: users.name, email: users.email, avatarColor: users.avatarColor })
-      .get();
-    return { ok: true, user };
+    const user = existing
+      ? db
+          .update(users)
+          .set({ name: input.name.trim(), passwordHash, failedLogins: 0, lockedUntil: null })
+          .where(and(eq(users.id, existing.id), isNull(users.emailVerifiedAt)))
+          .returning(publicCols)
+          .get()
+      : db.insert(users).values({ name: input.name.trim(), email, passwordHash }).returning(publicCols).get();
+    return user ? { ok: true, user } : { ok: false, reason: "already_exists" };
   } catch (error) {
-    // Duas abas enviando o cadastro ao mesmo tempo: a segunda bate na PK.
-    if (error instanceof Error && /UNIQUE|PRIMARY KEY|CHECK/.test(error.message)) {
-      return { ok: false, reason: "already_exists" };
-    }
+    // Dois cadastros simultâneos com o mesmo e-mail: o segundo bate no UNIQUE.
+    if (error instanceof Error && /UNIQUE/.test(error.message)) return { ok: false, reason: "already_exists" };
     throw error;
   }
 }
 
+/** Confirma o e-mail e cria os dados iniciais da conta (categorias, CDI, configurações). */
+export function confirmEmail(userId: number, now: Date = new Date()) {
+  db.transaction((tx) => {
+    tx.update(users)
+      .set({ emailVerifiedAt: now.toISOString() })
+      .where(and(eq(users.id, userId), isNull(users.emailVerifiedAt)))
+      .run();
+    seedUserDefaults(tx, userId);
+  });
+}
+
+/** Troca a senha, desbloqueia o login e encerra todas as sessões abertas. */
+export async function changePassword(userId: number, password: string, now: Date = new Date()) {
+  const passwordHash = await hashPassword(password);
+  db.transaction((tx) => {
+    tx.update(users).set({ passwordHash, failedLogins: 0, lockedUntil: null }).where(eq(users.id, userId)).run();
+    tx.update(sessions)
+      .set({ revokedAt: now.toISOString() })
+      .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)))
+      .run();
+  });
+}
+
 export type AuthenticateResult =
-  | { ok: true; user: PublicUser }
+  | { ok: true; user: PublicUser; verified: boolean }
   | { ok: false; reason: "invalid_credentials" }
   | { ok: false; reason: "locked"; until: string };
 
@@ -102,7 +124,11 @@ export async function authenticate(
     db.update(users).set({ failedLogins: 0, lockedUntil: null }).where(eq(users.id, user.id)).run();
   }
 
-  return { ok: true, user: { id: user.id, name: user.name, email: user.email, avatarColor: user.avatarColor } };
+  return {
+    ok: true,
+    user: { id: user.id, name: user.name, email: user.email, avatarColor: user.avatarColor },
+    verified: Boolean(user.emailVerifiedAt),
+  };
 }
 
 export function updateUserName(id: number, name: string): boolean {

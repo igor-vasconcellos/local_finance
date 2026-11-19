@@ -7,14 +7,16 @@ import { annualToMonthlyPct, bpToPct, formatPct } from "@/lib/rates";
 import { goalsForMonth, listBoxes, listBoxInstitutionNames } from "@/server/finance/boxes";
 import { cdiRateOn } from "@/server/finance/settings";
 import { BoxesView } from "./boxes-view";
+import { requireUserId } from "@/server/auth/current";
 
 export const metadata: Metadata = { title: "Caixinhas" };
 
 export default async function BoxesPage() {
+  const uid = await requireUserId();
   const today = todayISO();
-  const boxes = listBoxes(today);
-  const cdi = cdiRateOn(today);
-  const goals = goalsForMonth(today.slice(0, 7), today);
+  const boxes = listBoxes(uid, today);
+  const cdi = cdiRateOn(uid, today);
+  const goals = goalsForMonth(uid, today.slice(0, 7), today);
 
   const total = boxes.reduce((a, b) => a + b.balanceCents, 0);
   const yieldTotal = boxes.reduce((a, b) => a + b.yieldCents, 0);
@@ -45,7 +47,7 @@ export default async function BoxesPage() {
         </div>
       )}
 
-      <BoxesView boxes={boxes} institutions={listBoxInstitutionNames()} />
+      <BoxesView boxes={boxes} institutions={listBoxInstitutionNames(uid)} />
     </>
   );
 }

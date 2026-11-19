@@ -410,8 +410,8 @@ function SecuritySection({ user, mailViaSmtp, sessionExpiresAt }: Props) {
       <div className="mt-5 flex items-start gap-3 rounded-xl bg-muted/60 p-4 text-sm">
         <KeyRound className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
         <p className="text-muted-foreground">
-          Esqueceu a senha? No computador onde o app roda, execute{" "}
-          <code className="rounded bg-card px-1.5 py-0.5 font-mono text-xs text-foreground">npm run user:reset-password</code>.
+          Esqueceu a senha? Na tela de login, clique em <strong className="text-foreground">Esqueci minha senha</strong>: enviamos um
+          código para o seu e-mail e você cria uma senha nova.
         </p>
       </div>
     </Section>

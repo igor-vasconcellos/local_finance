@@ -19,51 +19,60 @@ import {
 import { createTestDb } from "./helpers/test-db";
 
 let t: ReturnType<typeof createTestDb>;
-
-beforeEach(() => {
-  t = createTestDb();
-});
+let uid = 0;
 
 const user = { name: "Igor", email: "igor@example.com", passwordHash: "x" };
 
-describe("Módulo 1 — usuário único", () => {
-  it("aceita o usuário master com id 1", () => {
-    t.db.insert(users).values({ id: 1, ...user }).run();
-    expect(t.db.select().from(users).all()).toHaveLength(1);
-  });
+beforeEach(() => {
+  t = createTestDb();
+  uid = t.db.insert(users).values(user).returning().get().id;
+});
 
-  it("rejeita um segundo usuário", () => {
-    t.db.insert(users).values({ id: 1, ...user }).run();
-    expect(() =>
-      t.db.insert(users).values({ id: 2, ...user, email: "outro@example.com" }).run(),
-    ).toThrow(/CHECK constraint failed/);
+describe("Módulo 1 — contas", () => {
+  it("aceita várias contas, com e-mail único", () => {
+    t.db.insert(users).values({ ...user, email: "outra@example.com" }).run();
+    expect(t.db.select().from(users).all()).toHaveLength(2);
+    expect(() => t.db.insert(users).values(user).run()).toThrow(/UNIQUE constraint failed/);
   });
 
   it("exige e-mail em minúsculas", () => {
-    expect(() =>
-      t.db.insert(users).values({ id: 1, ...user, email: "Igor@Example.com" }).run(),
-    ).toThrow(/CHECK constraint failed/);
+    expect(() => t.db.insert(users).values({ ...user, email: "Igor2@Example.com" }).run()).toThrow(/CHECK constraint failed/);
+  });
+
+  it("apagar a conta apaga os dados dela (cascata)", () => {
+    t.db.insert(categories).values({ userId: uid, name: "Moradia", kind: "expense" }).run();
+    t.db.insert(creditCards).values({ userId: uid, name: "Nubank", limitCents: 1, closingDay: 3, dueDay: 10 }).run();
+    t.sqlite.prepare("DELETE FROM users WHERE id = ?").run(uid);
+    expect(t.db.select().from(categories).all()).toHaveLength(0);
+    expect(t.db.select().from(creditCards).all()).toHaveLength(0);
+  });
+
+  it("categoria com mesmo nome pode existir em contas diferentes", () => {
+    const other = t.db.insert(users).values({ ...user, email: "b@example.com" }).returning().get().id;
+    t.db.insert(categories).values({ userId: uid, name: "Moradia", kind: "expense" }).run();
+    t.db.insert(categories).values({ userId: other, name: "Moradia", kind: "expense" }).run();
+    expect(() => t.db.insert(categories).values({ userId: uid, name: "Moradia", kind: "expense" }).run()).toThrow(/UNIQUE/);
   });
 });
 
 describe("Configurações e CDI", () => {
-  it("settings tem defaults do farol (20% / 5%) e linha única", () => {
-    t.db.insert(settings).values({ id: 1 }).run();
+  it("settings tem defaults do farol (20% / 5%) e uma linha por conta", () => {
+    t.db.insert(settings).values({ userId: uid }).run();
     const row = t.db.select().from(settings).get();
     expect(row).toMatchObject({ greenThresholdBp: 2000, yellowThresholdBp: 500 });
-    expect(() => t.db.insert(settings).values({ id: 2 }).run()).toThrow();
+    expect(() => t.db.insert(settings).values({ userId: uid }).run()).toThrow();
   });
 
   it("rejeita limites do farol fora de ordem", () => {
     expect(() =>
-      t.db.insert(settings).values({ id: 1, greenThresholdBp: 300, yellowThresholdBp: 500 }).run(),
+      t.db.insert(settings).values({ userId: uid, greenThresholdBp: 300, yellowThresholdBp: 500 }).run(),
     ).toThrow(/CHECK constraint failed/);
   });
 
   it("valida formato de data da taxa CDI", () => {
-    t.db.insert(cdiRates).values({ annualRateBp: 1365, effectiveFrom: "2026-11-05" }).run();
+    t.db.insert(cdiRates).values({ userId: uid, annualRateBp: 1365, effectiveFrom: "2026-11-05" }).run();
     expect(() =>
-      t.db.insert(cdiRates).values({ annualRateBp: 1365, effectiveFrom: "05/11/2026" }).run(),
+      t.db.insert(cdiRates).values({ userId: uid, annualRateBp: 1365, effectiveFrom: "05/11/2026" }).run(),
     ).toThrow(/CHECK constraint failed/);
   });
 });
@@ -71,32 +80,32 @@ describe("Configurações e CDI", () => {
 describe("Módulo 2 — cadastros base", () => {
   it("renda mensal exige dia de pagamento; renda única exige data", () => {
     const base = { name: "Salário", type: "salary" as const, amountCents: 800000, startMonth: "2026-11" };
-    t.db.insert(incomeSources).values({ ...base, recurrence: "monthly", payDay: 5 }).run();
-    t.db.insert(incomeSources).values({ ...base, recurrence: "once", payDate: "2026-12-20" }).run();
-    expect(() => t.db.insert(incomeSources).values({ ...base, recurrence: "monthly" }).run()).toThrow(
+    t.db.insert(incomeSources).values({ userId: uid, ...base, recurrence: "monthly", payDay: 5 }).run();
+    t.db.insert(incomeSources).values({ userId: uid, ...base, recurrence: "once", payDate: "2026-12-20" }).run();
+    expect(() => t.db.insert(incomeSources).values({ userId: uid, ...base, recurrence: "monthly" }).run()).toThrow(
       /CHECK constraint failed/,
     );
-    expect(() => t.db.insert(incomeSources).values({ ...base, recurrence: "once" }).run()).toThrow(
+    expect(() => t.db.insert(incomeSources).values({ userId: uid, ...base, recurrence: "once" }).run()).toThrow(
       /CHECK constraint failed/,
     );
   });
 
   it("rejeita valores não positivos e dia de vencimento inválido", () => {
-    const cat = t.db.insert(categories).values({ name: "Moradia", kind: "expense" }).returning().get();
+    const cat = t.db.insert(categories).values({ userId: uid, name: "Moradia", kind: "expense" }).returning().get();
     const base = { name: "Aluguel", categoryId: cat.id, startMonth: "2026-11" };
     expect(() =>
-      t.db.insert(recurringExpenses).values({ ...base, amountCents: 0, dueDay: 10 }).run(),
+      t.db.insert(recurringExpenses).values({ userId: uid, ...base, amountCents: 0, dueDay: 10 }).run(),
     ).toThrow(/CHECK constraint failed/);
     expect(() =>
-      t.db.insert(recurringExpenses).values({ ...base, amountCents: 150000, dueDay: 32 }).run(),
+      t.db.insert(recurringExpenses).values({ userId: uid, ...base, amountCents: 150000, dueDay: 32 }).run(),
     ).toThrow(/CHECK constraint failed/);
   });
 
   it("não permite apagar categoria em uso por gasto recorrente", () => {
-    const cat = t.db.insert(categories).values({ name: "Moradia", kind: "expense" }).returning().get();
+    const cat = t.db.insert(categories).values({ userId: uid, name: "Moradia", kind: "expense" }).returning().get();
     t.db
       .insert(recurringExpenses)
-      .values({ name: "Aluguel", categoryId: cat.id, amountCents: 150000, dueDay: 10, startMonth: "2026-11" })
+      .values({ userId: uid, name: "Aluguel", categoryId: cat.id, amountCents: 150000, dueDay: 10, startMonth: "2026-11" })
       .run();
     expect(() => t.sqlite.prepare("DELETE FROM categories WHERE id = ?").run(cat.id)).toThrow(
       /FOREIGN KEY constraint failed/,
@@ -106,7 +115,7 @@ describe("Módulo 2 — cadastros base", () => {
   it("compra parcelada liga parcelas às faturas; uma fatura por cartão/mês", () => {
     const card = t.db
       .insert(creditCards)
-      .values({ name: "Nubank", limitCents: 500000, closingDay: 3, dueDay: 10 })
+      .values({ userId: uid, name: "Nubank", limitCents: 500000, closingDay: 3, dueDay: 10 })
       .returning()
       .get();
     const inv = t.db
@@ -139,7 +148,7 @@ describe("Módulo 2 — cadastros base", () => {
   it("limita o parcelamento a 48x", () => {
     const card = t.db
       .insert(creditCards)
-      .values({ name: "Itaú", limitCents: 0, closingDay: 1, dueDay: 8 })
+      .values({ userId: uid, name: "Itaú", limitCents: 0, closingDay: 1, dueDay: 8 })
       .returning()
       .get();
     expect(() =>
@@ -153,10 +162,10 @@ describe("Módulo 2 — cadastros base", () => {
 
 describe("Módulo 3 — caixinhas", () => {
   it("guarda percentual do CDI em basis points (115% = 11500) e valida movimentações", () => {
-    const inst = t.db.insert(institutions).values({ name: "Banco X" }).returning().get();
+    const inst = t.db.insert(institutions).values({ userId: uid, name: "Banco X" }).returning().get();
     const box = t.db
       .insert(savingsBoxes)
-      .values({ institutionId: inst.id, name: "Reserva", cdiPercentBp: 11500 })
+      .values({ userId: uid, institutionId: inst.id, name: "Reserva", cdiPercentBp: 11500 })
       .returning()
       .get();
     expect(box.cdiPercentBp).toBe(11500);
@@ -174,37 +183,37 @@ describe("Módulo 4 — simulações crédito e débito", () => {
   it("crédito exige cartão; débito proíbe cartão e é sempre 1 parcela", () => {
     const card = t.db
       .insert(creditCards)
-      .values({ name: "Nubank", limitCents: 500000, closingDay: 3, dueDay: 10 })
+      .values({ userId: uid, name: "Nubank", limitCents: 500000, closingDay: 3, dueDay: 10 })
       .returning()
       .get();
 
-    t.db.insert(simulations).values({ ...sim, paymentMethod: "credit", cardId: card.id, installmentsCount: 12 }).run();
-    t.db.insert(simulations).values({ ...sim, paymentMethod: "debit" }).run();
+    t.db.insert(simulations).values({ userId: uid, ...sim, paymentMethod: "credit", cardId: card.id, installmentsCount: 12 }).run();
+    t.db.insert(simulations).values({ userId: uid, ...sim, paymentMethod: "debit" }).run();
 
-    expect(() => t.db.insert(simulations).values({ ...sim, paymentMethod: "credit" }).run()).toThrow(
+    expect(() => t.db.insert(simulations).values({ userId: uid, ...sim, paymentMethod: "credit" }).run()).toThrow(
       /CHECK constraint failed/,
     );
     expect(() =>
-      t.db.insert(simulations).values({ ...sim, paymentMethod: "debit", cardId: card.id }).run(),
+      t.db.insert(simulations).values({ userId: uid, ...sim, paymentMethod: "debit", cardId: card.id }).run(),
     ).toThrow(/CHECK constraint failed/);
     expect(() =>
-      t.db.insert(simulations).values({ ...sim, paymentMethod: "debit", installmentsCount: 3 }).run(),
+      t.db.insert(simulations).values({ userId: uid, ...sim, paymentMethod: "debit", installmentsCount: 3 }).run(),
     ).toThrow(/CHECK constraint failed/);
   });
 
   it("status 'effectivated' exige data de efetivação", () => {
     expect(() =>
-      t.db.insert(simulations).values({ ...sim, paymentMethod: "debit", status: "effectivated" }).run(),
+      t.db.insert(simulations).values({ userId: uid, ...sim, paymentMethod: "debit", status: "effectivated" }).run(),
     ).toThrow(/CHECK constraint failed/);
   });
 
   it("uma simulação de débito efetivada gera no máximo um gasto avulso", () => {
     const s = t.db
       .insert(simulations)
-      .values({ ...sim, paymentMethod: "debit", status: "effectivated", effectivatedAt: "2026-11-25T12:00:00Z" })
+      .values({ userId: uid, ...sim, paymentMethod: "debit", status: "effectivated", effectivatedAt: "2026-11-25T12:00:00Z" })
       .returning()
       .get();
-    const row = { description: "TV", amountCents: 200000, date: "2026-11-25", simulationId: s.id };
+    const row = { userId: uid, description: "TV", amountCents: 200000, date: "2026-11-25", simulationId: s.id };
     t.db.insert(oneTimeExpenses).values(row).run();
     expect(() => t.db.insert(oneTimeExpenses).values(row).run()).toThrow(/UNIQUE constraint failed/);
   });

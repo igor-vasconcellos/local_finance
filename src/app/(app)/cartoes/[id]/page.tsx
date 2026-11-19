@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { firstInvoiceFor, todayISO } from "@/lib/dates";
 import { listCategories } from "@/server/finance/categories";
+import { requireUserId } from "@/server/auth/current";
 import {
   getCard,
   getInvoiceDetail,
@@ -14,13 +15,15 @@ import { listImports } from "@/server/import/service";
 import { CardDetailView } from "./card-detail-view";
 
 export async function generateMetadata({ params }: PageProps<"/cartoes/[id]">): Promise<Metadata> {
-  const row = getCard(Number((await params).id));
+  const uid = await requireUserId();
+  const row = getCard(uid, Number((await params).id));
   return { title: row ? row.card.name : "Cartão" };
 }
 
 export default async function CardDetailPage({ params, searchParams }: PageProps<"/cartoes/[id]">) {
+  const uid = await requireUserId();
   const id = Number((await params).id);
-  const row = Number.isInteger(id) ? getCard(id) : undefined;
+  const row = Number.isInteger(id) ? getCard(uid, id) : undefined;
   if (!row) notFound();
   const { card, institutionName } = row;
 
@@ -29,7 +32,7 @@ export default async function CardDetailPage({ params, searchParams }: PageProps
   const requested = (await searchParams).fatura;
   const selected = typeof requested === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(requested) ? requested : currentRef;
 
-  const months = listInvoiceMonths(card.id, today);
+  const months = listInvoiceMonths(uid, card.id, today);
   const monthSet = new Set([...months.map((m) => m.referenceMonth), currentRef, selected]);
   const tabs = [...monthSet].sort().map((ref) => ({
     referenceMonth: ref,
@@ -37,9 +40,9 @@ export default async function CardDetailPage({ params, searchParams }: PageProps
     isCurrent: ref === currentRef,
   }));
 
-  const invoice = getInvoiceDetail(card.id, selected, today)!;
-  const purchases = listPurchases(card.id);
-  const allCards = listCards(today);
+  const invoice = getInvoiceDetail(uid, card.id, selected, today)!;
+  const purchases = listPurchases(uid, card.id);
+  const allCards = listCards(uid, today);
   const cardOptions = allCards
     .filter((c) => c.active || c.id === card.id)
     .map((c) => ({ id: c.id, name: c.name, closingDay: c.closingDay, dueDay: c.dueDay }));
@@ -52,9 +55,9 @@ export default async function CardDetailPage({ params, searchParams }: PageProps
       invoice={invoice}
       purchases={purchases}
       cardOptions={cardOptions}
-      categories={listCategories("expense")}
-      institutions={listInstitutionNames()}
-      imports={listImports(card.id)}
+      categories={listCategories(uid, "expense")}
+      institutions={listInstitutionNames(uid)}
+      imports={listImports(uid, card.id)}
       today={today}
     />
   );

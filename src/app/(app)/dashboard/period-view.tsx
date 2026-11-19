@@ -12,8 +12,8 @@ import { cn } from "@/lib/utils";
 import { projectMonths } from "@/server/finance/projection";
 
 /** Visão semestral/anual: fluxo de caixa previsto, gráfico e tabela lado a lado. */
-export function PeriodView({ state, length, today }: { state: DashboardState; length: number; today: ISODate }) {
-  const { months, thresholds } = projectMonths(state.start, length, today);
+export function PeriodView({ uid, state, length, today }: { uid: number; state: DashboardState; length: number; today: ISODate }) {
+  const { months, thresholds } = projectMonths(uid, state.start, length, today);
   const sim = state.sim;
 
   const rows = months.map((m) => {

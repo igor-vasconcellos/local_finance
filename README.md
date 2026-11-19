@@ -35,13 +35,20 @@ npm run dev       # abre em http://localhost:3000
 > **Windows:** se o `npm install` reclamar ao compilar o `better-sqlite3`, confira se
 > está usando Node 22 ou 24 LTS (há binários prontos para essas versões).
 
-### Primeiro acesso e login
+### Contas, cadastro e login (Etapa 8)
 
-1. Abra http://localhost:3000 — na primeira vez você cai em **Primeiro acesso** para
-   criar o usuário master (nome, e-mail e senha com 10+ caracteres, letras e números).
-2. Depois, todo login tem **duas etapas**: e-mail + senha → código de 6 dígitos
+1. Abra http://localhost:3000 → **Criar conta**: nome, e-mail e senha forte.
+   - **Senha forte:** 10+ caracteres, maiúscula, minúscula, número e símbolo; não pode
+     conter seu nome/e-mail nem ser uma senha comum (a tela mostra cada critério).
+   - **E-mail real:** e-mails temporários são recusados, o domínio precisa receber
+     e-mails (registro MX) e a conta só é ativada com o **código enviado ao e-mail**.
+2. Cada conta vê **apenas os próprios dados**; contas novas já vêm com as categorias
+   padrão, a taxa CDI e o farol.
+3. Todo login tem **duas etapas**: e-mail + senha → código de 6 dígitos
    (válido por 5 minutos, uso único, até 5 tentativas; reenvio a cada 30s).
-3. Após 5 senhas erradas seguidas, o login fica bloqueado por 15 minutos.
+4. Após 5 senhas erradas seguidas, o login fica bloqueado por 15 minutos.
+5. Quem já usava o app (conta única) continua com tudo: na atualização, os dados
+   passam a pertencer à conta existente, que já fica confirmada.
 
 ### E-mail para o código 2FA
 
@@ -149,15 +156,30 @@ iniciar (migrações automáticas), sem perder dados.
 
 ### Esqueci minha senha
 
-Como o app é local, a recuperação é feita pelo terminal do próprio computador:
+Na tela de login, **Esqueci minha senha** → informe o e-mail → digite o código recebido
+e a nova senha (forte). A troca desbloqueia o login e encerra todas as sessões abertas.
+Por segurança, a resposta é a mesma exista ou não uma conta com o e-mail informado.
 
-```bash
-npm run user:reset-password
-```
-
-Define uma nova senha, desbloqueia o login e encerra todas as sessões abertas.
+Sem acesso ao e-mail, quem tem o terminal do servidor pode usar
+`npm run user:reset-password` (pede o e-mail da conta e a nova senha).
 
 ---
+
+## Fluxo de trabalho (branches e PRs)
+
+```
+feature/*  ──PR──▶  homologacao  ──PR──▶  main
+(cada mudança)      (teste)              (produção)
+```
+
+- Cada mudança nasce numa branch `feature/...` e vira um **Pull Request para `homologacao`**.
+  O PR descreve **o que foi pedido**, **o que foi feito**, **como testar** e traz uma
+  **autorrevisão** em comentário. A verificação automática (lint, tipos, testes e build)
+  roda em todo PR.
+- Você revisa o PR no GitHub (aba *Files changed*) e faz o **merge** em `homologacao`.
+- Validado em homologação, um PR de `homologacao` → `main` publica em produção.
+- `main` e `homologacao` são protegidas: não aceitam push direto, só PR com a
+  verificação automática passando.
 
 ## Uso no Windows sem terminal
 
@@ -250,3 +272,5 @@ Ao acessar por HTTPS, ajuste no `.env`: `APP_URL=<url https>` e `COOKIE_SECURE=t
 - [x] **Etapa 5** — Simulador (crédito e débito) + farol + efetivação
 - [x] **Etapa 6** — Dashboards mensal / semestral / anual, real vs. simulado
 - [x] **Etapa 7** — Importação de fatura (Nubank CSV, PicPay e Mercado Pago PDF)
+- [x] **Etapa 8** — Várias contas com dados separados, cadastro com e-mail confirmado e senha forte, "Esqueci minha senha"
+- [ ] **Etapa 9** — Hospedagem na Vercel + Supabase (Postgres)

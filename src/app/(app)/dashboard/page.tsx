@@ -20,6 +20,7 @@ const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   const { user } = await requireSession();
+  const uid = user.id;
   const params = await searchParams;
   const today = todayISO();
   const current = currentMonth();
@@ -27,7 +28,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   const view: DashboardView = params.visao === "semestral" || params.visao === "anual" ? params.visao : "mensal";
   const start = typeof params.mes === "string" && MONTH_RE.test(params.mes) ? params.mes : current;
   const state: DashboardState = { view, start, current, sim: params.sim === "1" };
-  const simCount = listSimulations().filter((s) => s.status === "active" && s.isVisible).length;
+  const simCount = listSimulations(uid).filter((s) => s.status === "active" && s.isVisible).length;
 
   const description =
     view === "mensal"
@@ -46,9 +47,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
       </div>
 
       {view === "mensal" ? (
-        <MonthlyView month={start} current={current} today={today} sim={state.sim} />
+        <MonthlyView uid={uid} month={start} current={current} today={today} sim={state.sim} />
       ) : (
-        <PeriodView state={state} length={PERIOD_LENGTH[view]} today={today} />
+        <PeriodView uid={uid} state={state} length={PERIOD_LENGTH[view]} today={today} />
       )}
     </>
   );

@@ -6,6 +6,9 @@ import type { Month } from "@/lib/dates";
 import { simulationSchedule } from "@/lib/simulation";
 import type { SimulationInput } from "@/lib/validation/finance";
 import { createPurchaseTx } from "./cards";
+import { assertCategory, NotFoundError } from "./owner";
+
+const mine = (uid: number, id: number) => and(eq(simulations.id, id), eq(simulations.userId, uid));
 
 export type SimulationRow = typeof simulations.$inferSelect & {
   cardName: string | null;
@@ -15,12 +18,13 @@ export type SimulationRow = typeof simulations.$inferSelect & {
   installmentCents: number;
 };
 
-export function listSimulations(): SimulationRow[] {
+export function listSimulations(uid: number): SimulationRow[] {
   const rows = db
     .select({ s: simulations, cardName: creditCards.name, categoryName: categories.name })
     .from(simulations)
     .leftJoin(creditCards, eq(creditCards.id, simulations.cardId))
     .leftJoin(categories, eq(categories.id, simulations.categoryId))
+    .where(eq(simulations.userId, uid))
     .orderBy(asc(simulations.status), desc(simulations.createdAt))
     .all();
 
@@ -44,9 +48,17 @@ export function listSimulations(): SimulationRow[] {
 
 export type SimResult = { ok: true; id: number } | { ok: false; error: string };
 
-export function createSimulation(input: SimulationInput): SimResult {
-  const card = input.cardId ? db.select().from(creditCards).where(eq(creditCards.id, input.cardId)).get() : null;
+export function createSimulation(uid: number, input: SimulationInput): SimResult {
+  const card = input.cardId
+    ? db.select().from(creditCards).where(and(eq(creditCards.id, input.cardId), eq(creditCards.userId, uid))).get()
+    : null;
   if (input.paymentMethod === "credit" && !card) return { ok: false, error: "Cartão não encontrado." };
+  try {
+    assertCategory(db, uid, input.categoryId, "expense");
+  } catch (e) {
+    if (e instanceof NotFoundError) return { ok: false, error: e.message };
+    throw e;
+  }
 
   const schedule = simulationSchedule({
     paymentMethod: input.paymentMethod,
@@ -60,6 +72,7 @@ export function createSimulation(input: SimulationInput): SimResult {
     const { id } = tx
       .insert(simulations)
       .values({
+        userId: uid,
         description: input.description,
         paymentMethod: input.paymentMethod,
         cardId: input.paymentMethod === "credit" ? input.cardId : null,
@@ -76,12 +89,12 @@ export function createSimulation(input: SimulationInput): SimResult {
   return { ok: true, id };
 }
 
-export function setSimulationVisible(id: number, visible: boolean) {
-  return db.update(simulations).set({ isVisible: visible }).where(eq(simulations.id, id)).run().changes > 0;
+export function setSimulationVisible(uid: number, id: number, visible: boolean) {
+  return db.update(simulations).set({ isVisible: visible }).where(mine(uid, id)).run().changes > 0;
 }
 
-export function deleteSimulation(id: number) {
-  return db.delete(simulations).where(eq(simulations.id, id)).run().changes > 0;
+export function deleteSimulation(uid: number, id: number) {
+  return db.delete(simulations).where(mine(uid, id)).run().changes > 0;
 }
 
 /**
@@ -89,13 +102,15 @@ export function deleteSimulation(id: number) {
  * - crédito → compra no cartão (parcelas nas faturas, regras atuais do cartão);
  * - débito  → gasto avulso na data da compra.
  */
-export function effectivateSimulation(id: number): SimResult {
-  const sim = db.select().from(simulations).where(eq(simulations.id, id)).get();
+export function effectivateSimulation(uid: number, id: number): SimResult {
+  const sim = db.select().from(simulations).where(mine(uid, id)).get();
   if (!sim) return { ok: false, error: "Simulação não encontrada." };
   if (sim.status === "effectivated") return { ok: false, error: "Esta simulação já foi efetivada." };
 
   if (sim.paymentMethod === "credit") {
-    const card = sim.cardId ? db.select().from(creditCards).where(eq(creditCards.id, sim.cardId)).get() : null;
+    const card = sim.cardId
+      ? db.select().from(creditCards).where(and(eq(creditCards.id, sim.cardId), eq(creditCards.userId, uid))).get()
+      : null;
     if (!card) return { ok: false, error: "O cartão desta simulação não existe mais." };
     if (!card.active) return { ok: false, error: "O cartão desta simulação está desativado. Reative-o antes de efetivar." };
   }
@@ -104,6 +119,7 @@ export function effectivateSimulation(id: number): SimResult {
     if (sim.paymentMethod === "credit") {
       createPurchaseTx(
         tx,
+        uid,
         {
           cardId: sim.cardId!,
           description: sim.description,
@@ -118,6 +134,7 @@ export function effectivateSimulation(id: number): SimResult {
     } else {
       tx.insert(oneTimeExpenses)
         .values({
+          userId: uid,
           description: sim.description,
           categoryId: sim.categoryId,
           amountCents: sim.totalCents,
@@ -146,7 +163,7 @@ export type SimulatedItem = {
 };
 
 /** Parcelas simuladas (ativas e marcadas para o cenário) que caem no mês. */
-export function simulatedItemsForMonth(month: Month): SimulatedItem[] {
+export function simulatedItemsForMonth(uid: number, month: Month): SimulatedItem[] {
   return db
     .select({
       simulationId: simulations.id,
@@ -160,7 +177,14 @@ export function simulatedItemsForMonth(month: Month): SimulatedItem[] {
     .from(simulationInstallments)
     .innerJoin(simulations, eq(simulations.id, simulationInstallments.simulationId))
     .leftJoin(creditCards, eq(creditCards.id, simulations.cardId))
-    .where(and(eq(simulationInstallments.referenceMonth, month), eq(simulations.status, "active"), eq(simulations.isVisible, true)))
+    .where(
+      and(
+        eq(simulations.userId, uid),
+        eq(simulationInstallments.referenceMonth, month),
+        eq(simulations.status, "active"),
+        eq(simulations.isVisible, true),
+      ),
+    )
     .orderBy(asc(simulations.purchaseDate))
     .all();
 }

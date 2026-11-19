@@ -243,12 +243,14 @@ const TOPICS: Topic[] = [
     summary: "Login em duas etapas, backup e recuperação.",
     body: (
       <ul>
+        <li>Cada pessoa tem a própria conta, e os dados de uma conta nunca aparecem para outra.</li>
         <li>Todo login pede e-mail, senha e um código de 6 dígitos enviado por e-mail (ou exibido no terminal, se o SMTP não estiver configurado).</li>
         <li>
-          Seus dados ficam só neste computador. Para fazer uma cópia de segurança, rode <code>npm run db:backup</code> no terminal.
+          Esqueceu a senha? Na tela de login, use <strong>Esqueci minha senha</strong>: o código chega no e-mail da conta e você cria uma
+          senha nova (as outras sessões abertas são encerradas).
         </li>
         <li>
-          Esqueceu a senha? Rode <code>npm run user:reset-password</code> no terminal.
+          Para fazer uma cópia de segurança, rode <code>npm run db:backup</code> no terminal.
         </li>
       </ul>
     ),

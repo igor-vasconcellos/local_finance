@@ -4,11 +4,13 @@ import { PageHeader, StatCard } from "@/components/ui/page";
 import { formatBRL } from "@/lib/money";
 import { listCards, listInstitutionNames } from "@/server/finance/cards";
 import { CardsView } from "./cards-view";
+import { requireUserId } from "@/server/auth/current";
 
 export const metadata: Metadata = { title: "Cartões" };
 
 export default async function CardsPage() {
-  const cards = listCards();
+  const uid = await requireUserId();
+  const cards = listCards(uid);
   const active = cards.filter((c) => c.active);
 
   const totalLimit = active.reduce((a, c) => a + c.limitCents, 0);
@@ -34,7 +36,7 @@ export default async function CardsPage() {
         </div>
       )}
 
-      <CardsView cards={cards} institutions={listInstitutionNames()} />
+      <CardsView cards={cards} institutions={listInstitutionNames(uid)} />
     </>
   );
 }

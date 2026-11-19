@@ -1,6 +1,9 @@
 import { z } from "zod";
+import { passwordProblem } from "@/lib/auth/password-policy";
 
-const email = z
+export { PASSWORD_MIN } from "@/lib/auth/password-policy";
+
+export const emailField = z
   .string()
   .trim()
   .min(1, "Informe seu e-mail.")
@@ -8,35 +11,42 @@ const email = z
   .pipe(z.email("E-mail inválido."))
   .transform((v) => v.toLowerCase());
 
-export const PASSWORD_MIN = 10;
+const nameField = z.string().trim().min(2, "Informe seu nome.").max(80, "Nome muito longo.");
 
-/** bcrypt considera só os primeiros 72 bytes — rejeitamos senhas maiores. */
-const newPassword = z
-  .string()
-  .min(PASSWORD_MIN, `A senha precisa ter pelo menos ${PASSWORD_MIN} caracteres.`)
-  .refine((v) => new TextEncoder().encode(v).length <= 72, "A senha pode ter no máximo 72 caracteres.")
-  .refine((v) => /[A-Za-zÀ-ÿ]/.test(v) && /\d/.test(v), "Use letras e números na senha.");
-
-export const setupSchema = z
+export const signupSchema = z
   .object({
-    name: z.string().trim().min(2, "Informe seu nome.").max(80, "Nome muito longo."),
-    email,
-    password: newPassword,
+    name: nameField,
+    email: emailField,
+    password: z.string().max(200),
     confirmPassword: z.string(),
   })
-  .refine((d) => d.password === d.confirmPassword, {
-    path: ["confirmPassword"],
-    message: "As senhas não conferem.",
+  .superRefine((d, ctx) => {
+    const problem = passwordProblem(d.password, { name: d.name, email: d.email });
+    if (problem) ctx.addIssue({ code: "custom", path: ["password"], message: problem });
+    if (d.password !== d.confirmPassword) {
+      ctx.addIssue({ code: "custom", path: ["confirmPassword"], message: "As senhas não conferem." });
+    }
   });
 
 export const loginSchema = z.object({
-  email,
+  email: emailField,
   password: z.string().min(1, "Informe sua senha.").max(200),
 });
 
 export const verifySchema = z.object({
   code: z.string().regex(/^\d{6}$/, "Digite os 6 dígitos do código."),
 });
+
+export const forgotSchema = z.object({ email: emailField });
+
+/** Nova senha (redefinição). O nome/e-mail da conta entram na checagem no servidor. */
+export const resetSchema = z
+  .object({
+    code: z.string().regex(/^\d{6}$/, "Digite os 6 dígitos do código."),
+    password: z.string().max(200),
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, { path: ["confirmPassword"], message: "As senhas não conferem." });
 
 /** Converte erros do Zod em { campo: primeira mensagem }. */
 export function fieldErrors(error: z.ZodError): Record<string, string> {

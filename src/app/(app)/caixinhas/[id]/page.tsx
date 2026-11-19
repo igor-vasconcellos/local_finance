@@ -4,16 +4,19 @@ import { projectSeries } from "@/lib/cdi";
 import { monthOf, todayISO } from "@/lib/dates";
 import { getBoxDetail, listBoxInstitutionNames } from "@/server/finance/boxes";
 import { BoxDetailView } from "./box-detail-view";
+import { requireUserId } from "@/server/auth/current";
 
 export async function generateMetadata({ params }: PageProps<"/caixinhas/[id]">): Promise<Metadata> {
-  const box = getBoxDetail(Number((await params).id));
+  const uid = await requireUserId();
+  const box = getBoxDetail(uid, Number((await params).id));
   return { title: box ? box.name : "Caixinha" };
 }
 
 export default async function BoxDetailPage({ params }: PageProps<"/caixinhas/[id]">) {
+  const uid = await requireUserId();
   const id = Number((await params).id);
   const today = todayISO();
-  const box = Number.isInteger(id) ? getBoxDetail(id, today) : null;
+  const box = Number.isInteger(id) ? getBoxDetail(uid, id, today) : null;
   if (!box) notFound();
 
   // Projeção de 12 meses com a taxa atual (+ aporte mensal sugerido pela meta, se houver).
@@ -27,7 +30,7 @@ export default async function BoxDetailPage({ params }: PageProps<"/caixinhas/[i
       box={box}
       projection={projection}
       projectionWithDeposit={monthlyDeposit > 0}
-      institutions={listBoxInstitutionNames()}
+      institutions={listBoxInstitutionNames(uid)}
       today={today}
     />
   );

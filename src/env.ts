@@ -41,6 +41,10 @@ const envSchema = z.object({
   SMTP_USER: optionalString,
   SMTP_PASS: optionalString,
   SMTP_FROM: optionalString,
+
+  // ---- Cadastro ----
+  /** Confere se o domínio do e-mail recebe mensagens (MX) antes de enviar o código. */
+  EMAIL_MX_CHECK: z.stringbool().default(true),
 });
 
 export type Env = z.infer<typeof envSchema>;

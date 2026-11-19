@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { ShieldCheck } from "lucide-react";
+import { MailCheck, ShieldCheck } from "lucide-react";
 import { AuthCard } from "@/components/auth/auth-card";
 import { Alert } from "@/components/ui/alert";
 import { mailTransport } from "@/env";
@@ -17,20 +17,24 @@ export default async function VerifyPage({ searchParams }: PageProps<"/verify">)
   await connection();
   const target = getResendTarget(await getPendingChallengeId());
   const user = target ? getUserById(target.userId) : undefined;
-  if (!user) redirect("/login");
+  if (!user || target!.purpose === "reset") redirect("/login");
 
   const { via } = await searchParams;
+  const signup = target!.purpose === "signup";
   const viaConsole = mailTransport === "console" || via === "not_configured" || via === "smtp_failed";
 
   return (
     <AuthCard
-      icon={<ShieldCheck />}
-      title="Verificação em duas etapas"
+      icon={signup ? <MailCheck /> : <ShieldCheck />}
+      title={signup ? "Confirme seu e-mail" : "Verificação em duas etapas"}
       description={
         viaConsole ? (
           <>Digite o código de 6 dígitos gerado para <strong className="text-foreground">{maskEmail(user.email)}</strong>.</>
         ) : (
-          <>Enviamos um código de 6 dígitos para <strong className="text-foreground">{maskEmail(user.email)}</strong>.</>
+          <>
+            Enviamos um código de 6 dígitos para <strong className="text-foreground">{maskEmail(user.email)}</strong>
+            {signup ? " para ativar sua conta." : "."}
+          </>
         )
       }
     >

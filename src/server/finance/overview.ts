@@ -48,7 +48,7 @@ export type Payable =
   | ({ kind: "invoice" } & MonthInvoice & { date: ISODate; overdue: boolean });
 
 /** Faturas (com lançamentos) que vencem no mês, de todos os cartões. */
-function monthInvoices(month: Month, today: ISODate): MonthInvoice[] {
+function monthInvoices(uid: number, month: Month, today: ISODate): MonthInvoice[] {
   return db
     .select({
       cardId: creditCards.id,
@@ -63,7 +63,7 @@ function monthInvoices(month: Month, today: ISODate): MonthInvoice[] {
     .from(invoices)
     .innerJoin(creditCards, eq(creditCards.id, invoices.cardId))
     .leftJoin(installments, eq(installments.invoiceId, invoices.id))
-    .where(eq(invoices.referenceMonth, month))
+    .where(and(eq(creditCards.userId, uid), eq(invoices.referenceMonth, month)))
     .groupBy(invoices.id)
     .orderBy(invoices.dueDate)
     .all()
@@ -72,23 +72,25 @@ function monthInvoices(month: Month, today: ISODate): MonthInvoice[] {
 }
 
 /** Tudo que falta pagar nos cartões (parcelas em faturas não pagas, inclusive futuras). */
-function cardDebts(): number {
+function cardDebts(uid: number): number {
   const row = db
     .select({ total: sql<number>`coalesce(${sum(installments.amountCents)}, 0)`.mapWith(Number) })
     .from(installments)
     .innerJoin(invoices, eq(invoices.id, installments.invoiceId))
-    .where(ne(invoices.status, "paid"))
+    .innerJoin(creditCards, eq(creditCards.id, invoices.cardId))
+    .where(and(eq(creditCards.userId, uid), ne(invoices.status, "paid")))
     .get();
   const credits = db
     .select({ total: sql<number>`coalesce(${sum(invoiceCredits.amountCents)}, 0)`.mapWith(Number) })
     .from(invoiceCredits)
     .innerJoin(invoices, eq(invoices.id, invoiceCredits.invoiceId))
-    .where(ne(invoices.status, "paid"))
+    .innerJoin(creditCards, eq(creditCards.id, invoices.cardId))
+    .where(and(eq(creditCards.userId, uid), ne(invoices.status, "paid")))
     .get();
   return Math.max(0, (row?.total ?? 0) - (credits?.total ?? 0));
 }
 
-function oneTimeInMonth(month: Month) {
+function oneTimeInMonth(uid: number, month: Month) {
   return db
     .select({
       id: oneTimeExpenses.id,
@@ -100,16 +102,23 @@ function oneTimeInMonth(month: Month) {
     })
     .from(oneTimeExpenses)
     .leftJoin(categories, eq(categories.id, oneTimeExpenses.categoryId))
-    .where(and(gte(oneTimeExpenses.date, `${month}-01`), lte(oneTimeExpenses.date, `${month}-31`)))
+    .where(
+      and(eq(oneTimeExpenses.userId, uid), gte(oneTimeExpenses.date, `${month}-01`), lte(oneTimeExpenses.date, `${month}-31`)),
+    )
     .all();
 }
 
-export function getMonthOverview(month: Month, today: ISODate = todayISO(), opts: { includeSimulations?: boolean } = {}) {
-  const settled = listSettlements(month);
+export function getMonthOverview(
+  uid: number,
+  month: Month,
+  today: ISODate = todayISO(),
+  opts: { includeSimulations?: boolean } = {},
+) {
+  const settled = listSettlements(uid, month);
   const settledIncome = new Map(settled.filter((s) => s.incomeId).map((s) => [s.incomeId!, s.amountCents]));
   const settledExpense = new Map(settled.filter((s) => s.expenseId).map((s) => [s.expenseId!, s.amountCents]));
 
-  const incomes: IncomeOccurrence[] = listIncomes()
+  const incomes: IncomeOccurrence[] = listIncomes(uid)
     .filter((i) => incomeAppliesTo(i, month))
     .map((i) => ({
       id: i.id,
@@ -120,7 +129,7 @@ export function getMonthOverview(month: Month, today: ISODate = todayISO(), opts
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  const expenses: ExpenseOccurrence[] = listExpenses()
+  const expenses: ExpenseOccurrence[] = listExpenses(uid)
     .filter((e) => expenseAppliesTo(e, month))
     .map((e) => ({
       id: e.id,
@@ -133,8 +142,8 @@ export function getMonthOverview(month: Month, today: ISODate = todayISO(), opts
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  const cardInvoices = monthInvoices(month, today);
-  const oneTime = oneTimeInMonth(month);
+  const cardInvoices = monthInvoices(uid, month, today);
+  const oneTime = oneTimeInMonth(uid, month);
 
   const sumOf = (xs: { amountCents?: number; totalCents?: number }[]) =>
     xs.reduce((a, x) => a + (x.amountCents ?? x.totalCents ?? 0), 0);
@@ -149,20 +158,20 @@ export function getMonthOverview(month: Month, today: ISODate = todayISO(), opts
     sumOf(expenses.filter((e) => !e.settled)) +
     sumOf(cardInvoices.filter((i) => i.status !== "paid")) +
     sumOf(oneTime.filter((o) => o.date > today));
-  const goalPlan = goalsForMonth(month, today);
+  const goalPlan = goalsForMonth(uid, month, today);
   const goals = goalPlan.total;
   const realized = received - paid;
-  const simulatedItems = opts.includeSimulations ? simulatedItemsForMonth(month) : [];
+  const simulatedItems = opts.includeSimulations ? simulatedItemsForMonth(uid, month) : [];
   const simulated = simulatedItems.reduce((a, s) => a + s.amountCents, 0);
   const forecast = realized + toReceive - toPay - goals - simulated;
 
-  const settings = getSettings();
+  const settings = getSettings(uid);
   const totalIncome = received + toReceive;
   const health = healthOf(forecast, totalIncome, settings.greenThresholdBp, settings.yellowThresholdBp);
 
   // Posição atual (não depende do mês selecionado).
-  const reserve = totalReserve(today);
-  const debts = cardDebts();
+  const reserve = totalReserve(uid, today);
+  const debts = cardDebts(uid);
   const netWorth = (settings.accountBalanceCents ?? 0) + reserve - debts;
 
   const payables: Payable[] = [
@@ -210,7 +219,7 @@ export type CategoryReportRow = {
 };
 
 /** Todas as saídas do mês (gastos fixos + parcelas de cartão + avulsos) agrupadas por categoria. */
-export function getCategoryReport(month: Month): { rows: CategoryReportRow[]; totalCents: number } {
+export function getCategoryReport(uid: number, month: Month): { rows: CategoryReportRow[]; totalCents: number } {
   const groups = new Map<string, CategoryReportRow>();
   const add = (name: string | null, color: string | null, item: CategoryReportItem) => {
     const key = name ?? "Sem categoria";
@@ -220,7 +229,7 @@ export function getCategoryReport(month: Month): { rows: CategoryReportRow[]; to
     groups.set(key, g);
   };
 
-  for (const e of listExpenses().filter((x) => expenseAppliesTo(x, month))) {
+  for (const e of listExpenses(uid).filter((x) => expenseAppliesTo(x, month))) {
     add(e.categoryName, e.categoryColor, { label: e.name, source: "fixo", detail: `Vence dia ${e.dueDay}`, amountCents: e.amountCents });
   }
 
@@ -239,7 +248,7 @@ export function getCategoryReport(month: Month): { rows: CategoryReportRow[]; to
     .innerJoin(cardPurchases, eq(cardPurchases.id, installments.purchaseId))
     .innerJoin(creditCards, eq(creditCards.id, invoices.cardId))
     .leftJoin(categories, eq(categories.id, cardPurchases.categoryId))
-    .where(eq(invoices.referenceMonth, month))
+    .where(and(eq(creditCards.userId, uid), eq(invoices.referenceMonth, month)))
     .all();
   for (const p of parts) {
     add(p.categoryName, p.categoryColor, {
@@ -255,13 +264,13 @@ export function getCategoryReport(month: Month): { rows: CategoryReportRow[]; to
     .from(invoiceCredits)
     .innerJoin(invoices, eq(invoices.id, invoiceCredits.invoiceId))
     .innerJoin(creditCards, eq(creditCards.id, invoices.cardId))
-    .where(eq(invoices.referenceMonth, month))
+    .where(and(eq(creditCards.userId, uid), eq(invoices.referenceMonth, month)))
     .all();
   for (const c of credits) {
     add("Créditos e estornos", "#10b981", { label: c.description, source: "cartão", detail: c.cardName, amountCents: -c.amountCents });
   }
 
-  for (const o of oneTimeInMonth(month)) {
+  for (const o of oneTimeInMonth(uid, month)) {
     add(o.categoryName, o.categoryColor, { label: o.description, source: "avulso", detail: "Débito/Pix", amountCents: o.amountCents });
   }
 

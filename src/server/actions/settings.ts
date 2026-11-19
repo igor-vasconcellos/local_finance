@@ -5,7 +5,7 @@ import { z } from "zod";
 import { parseBRL } from "@/lib/money";
 import { monthlyToAnnualPct, parsePct, pctToBp } from "@/lib/rates";
 import { dateField } from "@/lib/validation/finance";
-import { requireSession } from "@/server/auth/current";
+import { requireSession, requireUserId } from "@/server/auth/current";
 import { AVATAR_COLORS } from "@/lib/profile";
 import { updateAvatarColor, updateUserName } from "@/server/auth/users";
 import { deleteCdiRate, setCdiRate, updateAccountBalance, updateThresholds } from "@/server/finance/settings";
@@ -23,7 +23,7 @@ export async function saveNameAction(_prev: ActionState, fd: FormData): Promise<
 }
 
 export async function saveBalanceAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  await requireSession();
+  const uid = await requireUserId();
   const parsed = z
     .object({
       balance: z.string().transform((v, ctx) => {
@@ -41,13 +41,13 @@ export async function saveBalanceAction(_prev: ActionState, fd: FormData): Promi
     .safeParse(formObject(fd));
   if (!parsed.success) return invalid(parsed.error);
   const cents = parsed.data.negative === "on" ? -Math.abs(parsed.data.balance) : parsed.data.balance;
-  updateAccountBalance(cents, parsed.data.date);
+  updateAccountBalance(uid, cents, parsed.data.date);
   refresh();
   return { ok: true };
 }
 
 export async function saveCdiAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  await requireSession();
+  const uid = await requireUserId();
   const parsed = z
     .object({
       mode: z.enum(["monthly", "annual"]),
@@ -67,20 +67,20 @@ export async function saveCdiAction(_prev: ActionState, fd: FormData): Promise<A
   const { mode, rate, effectiveFrom } = parsed.data;
   const annualPct = mode === "monthly" ? monthlyToAnnualPct(rate) : rate;
   if (annualPct <= 0 || annualPct > 100) return { fields: { rate: "Taxa fora do esperado. Confira o valor." } };
-  setCdiRate(pctToBp(annualPct), effectiveFrom);
+  setCdiRate(uid, pctToBp(annualPct), effectiveFrom);
   refresh();
   return { ok: true };
 }
 
 export async function deleteCdiAction(fd: FormData): Promise<void> {
-  await requireSession();
+  const uid = await requireUserId();
   const id = parseId(fd.get("id"));
-  if (id) deleteCdiRate(id);
+  if (id) deleteCdiRate(uid, id);
   refresh();
 }
 
 export async function saveThresholdsAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  await requireSession();
+  const uid = await requireUserId();
   const pct = (label: string) =>
     z.string().transform((v, ctx) => {
       const n = parsePct(v);
@@ -95,7 +95,7 @@ export async function saveThresholdsAction(_prev: ActionState, fd: FormData): Pr
     .refine((d) => d.green > d.yellow, { path: ["green"], message: "O verde precisa ser maior que o amarelo." })
     .safeParse(formObject(fd));
   if (!parsed.success) return invalid(parsed.error);
-  updateThresholds(pctToBp(parsed.data.green), pctToBp(parsed.data.yellow));
+  updateThresholds(uid, pctToBp(parsed.data.green), pctToBp(parsed.data.yellow));
   refresh();
   return { ok: true };
 }

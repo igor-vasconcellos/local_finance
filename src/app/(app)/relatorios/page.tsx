@@ -7,16 +7,18 @@ import { currentMonth, formatMonthLong } from "@/lib/dates";
 import { formatBRL } from "@/lib/money";
 import { formatPct } from "@/lib/rates";
 import { getCategoryReport } from "@/server/finance/overview";
+import { requireUserId } from "@/server/auth/current";
 
 export const metadata: Metadata = { title: "Relatório por categoria" };
 
 const SOURCE_LABEL = { fixo: "Gasto fixo", "cartão": "Cartão", avulso: "Avulso" } as const;
 
 export default async function ReportPage({ searchParams }: PageProps<"/relatorios">) {
+  const uid = await requireUserId();
   const current = currentMonth();
   const requested = (await searchParams).mes;
   const month = typeof requested === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(requested) ? requested : current;
-  const { rows, totalCents } = getCategoryReport(month);
+  const { rows, totalCents } = getCategoryReport(uid, month);
   // Créditos/estornos entram negativos: a participação é calculada sobre os gastos brutos.
   const grossCents = rows.filter((r) => r.totalCents > 0).reduce((a, r) => a + r.totalCents, 0) || 1;
   const bySource = (s: keyof typeof SOURCE_LABEL) =>
