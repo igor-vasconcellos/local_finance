@@ -1,5 +1,5 @@
 import { categories, cdiRates, settings } from "@/db/schema";
-import type { Tx } from "@/server/finance/cards";
+import type { Tx } from "@/db/client";
 
 /** Dados iniciais de cada conta nova: configurações, taxa CDI e categorias padrão. */
 
@@ -32,14 +32,25 @@ export const EXPENSE_CATEGORIES = [
 ];
 
 /** Idempotente: pode rodar de novo sem duplicar nada. */
-export function seedUserDefaults(tx: Tx, userId: number) {
-  tx.insert(settings).values({ userId }).onConflictDoNothing().run();
-  tx.insert(cdiRates).values({ ...INITIAL_CDI, userId }).onConflictDoNothing().run();
-  tx.insert(categories)
+export async function seedUserDefaults(tx: Tx, userId: number) {
+  await tx.insert(settings).values({ userId }).onConflictDoNothing();
+  await tx
+    .insert(cdiRates)
+    .values({ ...INITIAL_CDI, userId })
+    .onConflictDoNothing();
+  await tx
+    .insert(categories)
     .values([
-      ...INCOME_CATEGORIES.map((c) => ({ ...c, userId, kind: "income" as const })),
-      ...EXPENSE_CATEGORIES.map((c) => ({ ...c, userId, kind: "expense" as const })),
+      ...INCOME_CATEGORIES.map((c) => ({
+        ...c,
+        userId,
+        kind: "income" as const,
+      })),
+      ...EXPENSE_CATEGORIES.map((c) => ({
+        ...c,
+        userId,
+        kind: "expense" as const,
+      })),
     ])
-    .onConflictDoNothing()
-    .run();
+    .onConflictDoNothing();
 }

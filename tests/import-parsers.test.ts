@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { checkTotals, cleanDescription, merchantKey, parseCsvStatement, parsePdfStatement, suggestCategoryName } from "@/lib/import";
+import {
+  checkTotals,
+  cleanDescription,
+  merchantKey,
+  parseCsvStatement,
+  parsePdfStatement,
+  suggestCategoryName,
+} from "@/lib/import";
 import { extractInstallment, inferYear, parseAmount } from "@/lib/import/text";
 
 /*
@@ -71,7 +78,7 @@ const NUBANK = `date,title,amount
 `;
 
 describe("valores e datas", () => {
-  it("lê valores no formato brasileiro, com e sem R$ e sinal", () => {
+  it("lê valores no formato brasileiro, com e sem R$ e sinal", async () => {
     expect(parseAmount("R$ 1.234,56")).toBe(123456);
     expect(parseAmount("- 55,20")).toBe(-5520);
     expect(parseAmount("-R$ 3,00")).toBe(-300);
@@ -80,13 +87,13 @@ describe("valores e datas", () => {
     expect(parseAmount("abc")).toBeNull();
   });
 
-  it("deduz o ano pelo fechamento (virada de ano)", () => {
+  it("deduz o ano pelo fechamento (virada de ano)", async () => {
     expect(inferYear("28/12", "2027-01-04")).toBe("2026-12-28");
     expect(inferYear("02/01", "2027-01-04")).toBe("2027-01-02");
     expect(inferYear("06/11", "2026-11-05")).toBe("2026-11-06");
   });
 
-  it("reconhece parcelas nos formatos comuns", () => {
+  it("reconhece parcelas nos formatos comuns", async () => {
     expect(extractInstallment("LOJA PARC 03/10")).toEqual({ description: "LOJA", installment: { number: 3, count: 10 } });
     expect(extractInstallment("Loja - Parcela 2/3")).toEqual({ description: "Loja", installment: { number: 2, count: 3 } });
     expect(extractInstallment("LOJA 2 de 6")).toEqual({ description: "LOJA", installment: { number: 2, count: 6 } });
@@ -97,7 +104,7 @@ describe("valores e datas", () => {
 });
 
 describe("limpeza e categorias", () => {
-  it("deixa as descrições legíveis", () => {
+  it("deixa as descrições legíveis", async () => {
     expect(cleanDescription("Uber - NuPay")).toBe("Uber");
     expect(cleanDescription("DL *UberRides")).toBe("Uber");
     expect(cleanDescription("MP*OLIMAO")).toBe("Olimao");
@@ -106,7 +113,7 @@ describe("limpeza e categorias", () => {
     expect(cleanDescription("Assai Atacadista Lj309")).toBe("Assai Atacadista Lj309");
   });
 
-  it("sugere categorias por palavras-chave e gera chaves estáveis", () => {
+  it("sugere categorias por palavras-chave e gera chaves estáveis", async () => {
     expect(suggestCategoryName("Uber")).toBe("Transporte");
     expect(suggestCategoryName("iFood · Jefferson")).toBe("Alimentação");
     expect(suggestCategoryName("Assai Atacadista Lj309")).toBe("Mercado");
@@ -120,13 +127,13 @@ describe("limpeza e categorias", () => {
 describe("Mercado Pago (PDF)", () => {
   const st = parsePdfStatement(MERCADO_PAGO);
 
-  it("detecta o banco, o vencimento e o fechamento", () => {
+  it("detecta o banco, o vencimento e o fechamento", async () => {
     expect(st.bank).toBe("mercadopago");
     expect(st.dueDate).toBe("2026-11-10");
     expect(st.closingDate).toBe("2026-11-05");
   });
 
-  it("separa compras por cartão e ignora o pagamento", () => {
+  it("separa compras por cartão e ignora o pagamento", async () => {
     const purchases = st.lines.filter((l) => l.kind === "purchase");
     expect(purchases).toHaveLength(6);
     expect(purchases.filter((l) => l.cardFinal === "1111")).toHaveLength(3);
@@ -135,7 +142,7 @@ describe("Mercado Pago (PDF)", () => {
     expect(purchases[2]).toMatchObject({ date: "2026-10-23", description: "Uber", amountCents: 762 });
   });
 
-  it("confere a soma com o total de consumos do PDF", () => {
+  it("confere a soma com o total de consumos do PDF", async () => {
     expect(checkTotals(st)).toMatchObject({ ok: true, checked: true, purchasesCents: 12040, expectedPurchasesCents: 12040 });
   });
 });
@@ -143,7 +150,7 @@ describe("Mercado Pago (PDF)", () => {
 describe("PicPay (PDF)", () => {
   const st = parsePdfStatement(PICPAY);
 
-  it("lê datas da virada de ano, créditos, parcelas e cartão adicional", () => {
+  it("lê datas da virada de ano, créditos, parcelas e cartão adicional", async () => {
     expect(st.bank).toBe("picpay");
     expect(st.closingDate).toBe("2027-01-04");
     const uber = st.lines.find((l) => l.description === "Uber")!;
@@ -155,12 +162,12 @@ describe("PicPay (PDF)", () => {
     expect(st.lines.find((l) => l.rawDescription.includes("ACAI"))?.description).toBe("Acai do Bairro");
   });
 
-  it("confere despesas e créditos com o resumo da fatura", () => {
+  it("confere despesas e créditos com o resumo da fatura", async () => {
     const t = checkTotals(st);
     expect(t).toMatchObject({ ok: true, purchasesCents: 4636, creditsCents: 113 });
   });
 
-  it("acusa diferença quando falta uma linha", () => {
+  it("acusa diferença quando falta uma linha", async () => {
     const broken = parsePdfStatement(PICPAY.filter((l) => !l.includes("KIM+")));
     expect(checkTotals(broken).ok).toBe(false);
   });
@@ -169,7 +176,7 @@ describe("PicPay (PDF)", () => {
 describe("Nubank (CSV)", () => {
   const st = parseCsvStatement(NUBANK, "Nubank_2026-11-08.csv");
 
-  it("usa o nome do arquivo como vencimento e classifica as linhas", () => {
+  it("usa o nome do arquivo como vencimento e classifica as linhas", async () => {
     expect(st.bank).toBe("nubank");
     expect(st.dueDate).toBe("2026-11-08");
     expect(st.closingDate).toBeNull();
@@ -177,16 +184,19 @@ describe("Nubank (CSV)", () => {
     expect(kinds["Pagamento recebido"]).toBe("payment");
     expect(kinds["Estorno de compra"]).toBe("credit");
     expect(kinds["99 - NuPay"]).toBe("purchase");
-    expect(st.lines.find((l) => l.installment)).toMatchObject({ description: "Loja Grande", installment: { number: 2, count: 3 } });
+    expect(st.lines.find((l) => l.installment)).toMatchObject({
+      description: "Loja Grande",
+      installment: { number: 2, count: 3 },
+    });
     expect(st.lines.find((l) => l.rawDescription === "Mp *Padaria")?.description).toBe("Padaria");
   });
 
-  it("aceita o formato antigo com categoria e ponto decimal", () => {
+  it("aceita o formato antigo com categoria e ponto decimal", async () => {
     const old = parseCsvStatement("date,category,title,amount\n2024-01-05,transporte,Uber *Trip,23.9\n", "x.csv");
     expect(old.lines[0]).toMatchObject({ amountCents: 2390, description: "Uber", kind: "purchase" });
   });
 
-  it("recusa arquivos que não reconhece", () => {
+  it("recusa arquivos que não reconhece", async () => {
     expect(() => parseCsvStatement("a,b,c\n1,2,3", "x.csv")).toThrow(/Não reconheci/);
     expect(() => parsePdfStatement(["Banco Qualquer", "Fatura"])).toThrow(/Não reconheci/);
     expect(() => parsePdfStatement([])).toThrow(/escaneada/);

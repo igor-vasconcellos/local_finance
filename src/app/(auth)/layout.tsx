@@ -21,7 +21,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
 
       <footer className="relative flex items-center justify-center gap-1.5 pb-6 text-xs text-muted-foreground">
         <Lock className="size-3" aria-hidden />
-        Seus dados ficam apenas neste computador.
+        Seus dados ficam protegidos e só você tem acesso a eles.
       </footer>
     </div>
   );

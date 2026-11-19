@@ -20,12 +20,16 @@ const envSchema = z.object({
 
   // ---- Aplicação ----
   APP_URL: z.url().default("http://localhost:3000"),
-  DATABASE_PATH: z.string().trim().min(1).default("./data/financeiro.db"),
+  /** Postgres (Supabase): pooler em modo transação, porta 6543. */
+  DATABASE_URL: z
+    .string()
+    .trim()
+    .regex(/^postgres(ql)?:\/\//, "DATABASE_URL precisa ser uma URL postgres://… (veja o .env.example)."),
+  /** Conexões por instância (funções da Vercel: poucas). */
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(20).default(3),
 
   // ---- Sessão ----
-  SESSION_SECRET: z
-    .string()
-    .min(32, "SESSION_SECRET precisa ter pelo menos 32 caracteres. Rode `npm run setup` para gerar um."),
+  SESSION_SECRET: z.string().min(32, "SESSION_SECRET precisa ter pelo menos 32 caracteres. Rode `npm run setup` para gerar um."),
   SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(720).default(12),
   COOKIE_SECURE: z.stringbool().default(false),
 
@@ -42,6 +46,10 @@ const envSchema = z.object({
   SMTP_PASS: optionalString,
   SMTP_FROM: optionalString,
 
+  // ---- Tarefas agendadas (Vercel Cron) ----
+  /** A Vercel envia "Authorization: Bearer <CRON_SECRET>" nas chamadas agendadas. */
+  CRON_SECRET: optionalString,
+
   // ---- Cadastro ----
   /** Confere se o domínio do e-mail recebe mensagens (MX) antes de enviar o código. */
   EMAIL_MX_CHECK: z.stringbool().default(true),
@@ -52,18 +60,19 @@ export type Env = z.infer<typeof envSchema>;
 function loadEnv(): Env {
   const parsed = envSchema.safeParse(process.env);
   if (!parsed.success) {
-    const issues = parsed.error.issues
-      .map((i) => `  • ${i.path.join(".")}: ${i.message}`)
-      .join("\n");
-    throw new Error(
-      `\n❌ Configuração inválida no .env:\n${issues}\n\nVeja o .env.example para referência.\n`,
-    );
+    const issues = parsed.error.issues.map((i) => `  • ${i.path.join(".")}: ${i.message}`).join("\n");
+    throw new Error(`\n❌ Configuração inválida no .env:\n${issues}\n\nVeja o .env.example para referência.\n`);
   }
 
   const env = parsed.data;
 
   if (env.MAIL_MODE === "smtp" && !env.SMTP_HOST) {
     throw new Error("MAIL_MODE=smtp exige SMTP_HOST configurado no .env.");
+  }
+
+  // Em produção na Vercel o código NUNCA pode ir para o log: exige SMTP.
+  if (process.env.VERCEL_ENV === "production" && env.MAIL_MODE !== "smtp") {
+    throw new Error("Em produção use MAIL_MODE=smtp (o modo console imprimiria códigos de acesso nos logs).");
   }
 
   return env;
@@ -73,8 +82,4 @@ export const env = loadEnv();
 
 /** Modo efetivo de envio de e-mail: em "auto", usa SMTP só se estiver configurado. */
 export const mailTransport: "smtp" | "console" =
-  env.MAIL_MODE === "console"
-    ? "console"
-    : env.MAIL_MODE === "smtp" || env.SMTP_HOST
-      ? "smtp"
-      : "console";
+  env.MAIL_MODE === "console" ? "console" : env.MAIL_MODE === "smtp" || env.SMTP_HOST ? "smtp" : "console";

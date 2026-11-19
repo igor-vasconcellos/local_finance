@@ -1,8 +1,8 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
-import type { db } from "@/db/client";
+import type { DB, Tx } from "@/db/client";
+import { first } from "@/db/query";
 import { categories, creditCards, institutions, savingsBoxes } from "@/db/schema";
-import type { Tx } from "./cards";
 
 /**
  * Isolamento entre contas: todo id que chega de um formulário (categoria, cartão,
@@ -16,42 +16,47 @@ export class NotFoundError extends Error {
   }
 }
 
-type Q = typeof db | Tx;
+type Q = DB | Tx;
 
-export function assertCategory(q: Q, uid: number, id: number | null | undefined, kind?: "income" | "expense") {
+export async function assertCategory(q: Q, uid: number, id: number | null | undefined, kind?: "income" | "expense") {
   if (id == null) return;
-  const row = q
+  const row = await q
     .select({ id: categories.id })
     .from(categories)
     .where(and(eq(categories.id, id), eq(categories.userId, uid), kind ? eq(categories.kind, kind) : undefined))
-    .get();
+    .then(first);
   if (!row) throw new NotFoundError("Categoria");
 }
 
-export function assertCard(q: Q, uid: number, id: number) {
-  const row = q
-    .select({ id: creditCards.id })
-    .from(creditCards)
-    .where(and(eq(creditCards.id, id), eq(creditCards.userId, uid)))
-    .get();
-  if (!row) throw new NotFoundError("Cartão");
+export async function assertCard(q: Q, uid: number, id: number) {
+  if (!(await ownsCard(q, uid, id))) throw new NotFoundError("Cartão");
 }
 
-export function assertInstitution(q: Q, uid: number, id: number | null | undefined) {
+/** O cartão é da conta? (protege todas as rotas que recebem cardId de fora) */
+export async function ownsCard(q: Q, uid: number, cardId: number): Promise<boolean> {
+  const row = await q
+    .select({ id: creditCards.id })
+    .from(creditCards)
+    .where(and(eq(creditCards.id, cardId), eq(creditCards.userId, uid)))
+    .then(first);
+  return Boolean(row);
+}
+
+export async function assertInstitution(q: Q, uid: number, id: number | null | undefined) {
   if (id == null) return;
-  const row = q
+  const row = await q
     .select({ id: institutions.id })
     .from(institutions)
     .where(and(eq(institutions.id, id), eq(institutions.userId, uid)))
-    .get();
+    .then(first);
   if (!row) throw new NotFoundError("Instituição");
 }
 
-export function assertBox(q: Q, uid: number, id: number) {
-  const row = q
+export async function assertBox(q: Q, uid: number, id: number) {
+  const row = await q
     .select({ id: savingsBoxes.id })
     .from(savingsBoxes)
     .where(and(eq(savingsBoxes.id, id), eq(savingsBoxes.userId, uid)))
-    .get();
+    .then(first);
   if (!row) throw new NotFoundError("Caixinha");
 }

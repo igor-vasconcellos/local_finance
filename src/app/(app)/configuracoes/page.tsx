@@ -13,7 +13,7 @@ export default async function SettingsPage() {
   const { user, expiresAt } = await requireSession();
   const uid = user.id;
   const today = todayISO();
-  const settings = getSettings(uid);
+  const settings = await getSettings(uid);
 
   return (
     <>
@@ -23,8 +23,8 @@ export default async function SettingsPage() {
         sessionExpiresAt={expiresAt}
         mailViaSmtp={mailTransport === "smtp"}
         settings={settings}
-        cdiRates={listCdiRates(uid)}
-        currentCdi={cdiRateOn(uid, today) ?? null}
+        cdiRates={await listCdiRates(uid)}
+        currentCdi={(await cdiRateOn(uid, today)) ?? null}
         today={today}
       />
     </>

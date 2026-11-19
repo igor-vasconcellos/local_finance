@@ -1,11 +1,11 @@
-# 💜 Local Finance
+# 💜 BeaconFinance
 
-Gerenciador financeiro pessoal que roda **100% no seu computador**: rendas, gastos
-fixos, cartões com faturas parceladas, caixinhas rendendo % do CDI, simulador de
+Gerenciador financeiro pessoal na nuvem: rendas, gastos fixos, cartões com faturas
+parceladas (e importação da fatura do banco), caixinhas rendendo % do CDI, simulador de
 compras com farol de saúde financeira e dashboards mensais / semestrais / anuais.
+Cada pessoa tem a própria conta, com os dados separados.
 
-Seus dados ficam em **um único arquivo SQLite** (`data/financeiro.db`), que nunca vai
-para o Git.
+Hospedado na **Vercel** (região São Paulo) com banco **Postgres no Supabase**.
 
 ---
 
@@ -13,27 +13,42 @@ para o Git.
 
 | Camada | Tecnologia |
 |---|---|
-| Runtime | Node.js 22.13+ (recomendado: 24 LTS) |
+| Runtime | Node.js 22.13+ (Vercel: Node 24) |
 | App (front + back) | Next.js 16 (App Router, Server Actions) + TypeScript |
 | UI | Tailwind CSS v4, componentes no padrão shadcn/ui, Lucide Icons, Recharts |
-| Banco | SQLite via better-sqlite3 + Drizzle ORM (migrações SQL versionadas) |
+| Banco | Postgres (Supabase) + Drizzle ORM, migrações SQL versionadas, RLS ligado |
 | Auth | bcrypt + 2FA por e-mail (Nodemailer) + sessão JWT em cookie HttpOnly |
-| Testes | Vitest |
+| Hospedagem | Vercel (Hobby) + Vercel Cron |
+| Testes | Vitest com Postgres em memória (PGlite) |
 
 ---
 
-## Instalação (primeira vez)
+## Ambientes
+
+| Branch | Ambiente | Banco |
+|---|---|---|
+| `main` | **Produção**: `https://beaconfinance.vercel.app` | Supabase `beaconfinance-prod` |
+| `homologacao` | **Homologação** (link de preview fixo da branch) | Supabase `beaconfinance-homolog` |
+| `feature/*` | sem deploy (só a verificação automática do PR) | — |
+
+O build da Vercel (`npm run vercel-build`) aplica as migrações pendentes no banco do
+ambiente e depois gera o app.
+
+---
+
+## Desenvolvimento no seu PC (opcional)
 
 ```bash
 git clone https://github.com/igor-vasconcellos/local_finance.git
 cd local_finance
 npm install
-npm run setup     # cria o .env (com SESSION_SECRET aleatório), o banco e os dados iniciais
-npm run dev       # abre em http://localhost:3000
+npm run setup        # cria o .env com SESSION_SECRET aleatório
+# no .env: DATABASE_URL e DIRECT_URL do projeto de HOMOLOGAÇÃO (Supabase → Connect)
+npm run db:migrate
+npm run dev          # http://localhost:3000
 ```
 
-> **Windows:** se o `npm install` reclamar ao compilar o `better-sqlite3`, confira se
-> está usando Node 22 ou 24 LTS (há binários prontos para essas versões).
+Sem SMTP no `.env`, o código de verificação aparece no terminal.
 
 ### Contas, cadastro e login (Etapa 8)
 
@@ -47,8 +62,6 @@ npm run dev       # abre em http://localhost:3000
 3. Todo login tem **duas etapas**: e-mail + senha → código de 6 dígitos
    (válido por 5 minutos, uso único, até 5 tentativas; reenvio a cada 30s).
 4. Após 5 senhas erradas seguidas, o login fica bloqueado por 15 minutos.
-5. Quem já usava o app (conta única) continua com tudo: na atualização, os dados
-   passam a pertencer à conta existente, que já fica confirmada.
 
 ### E-mail para o código 2FA
 
@@ -181,77 +194,67 @@ feature/*  ──PR──▶  homologacao  ──PR──▶  main
 - `main` e `homologacao` são protegidas: não aceitam push direto, só PR com a
   verificação automática passando.
 
-## Uso no Windows sem terminal
-
-Na pasta do projeto há três atalhos (duplo clique, **sem** precisar de administrador):
-
-| Arquivo | O que faz |
-|---|---|
-| `iniciar.bat` | Sobe o servidor (janela minimizada) e abre o app no navegador. Na primeira vez também instala e prepara tudo. Se já estiver aberto, só abre o navegador. |
-| `parar.bat` | Desliga o servidor. |
-| `atualizar.bat` | Baixa a versão nova do GitHub (`git pull`), instala e prepara. Seus dados e o `.env` não mudam. |
-
-Dica: clique com o botão direito em `iniciar.bat` → **Enviar para → Área de trabalho (criar atalho)**.
-Para abrir junto com o Windows, coloque um atalho em `shell:startup` (Win + R).
-
-> Evite deixar o projeto dentro de **Documentos** ou do **OneDrive** (proteção de pastas e
-> sincronização podem bloquear o Git ou corromper o banco). Prefira algo como `C:\Projetos`.
-
 ## Comandos
 
 | Comando | O que faz |
 |---|---|
-| `npm run dev` | Servidor de desenvolvimento em `127.0.0.1:3000` |
-| `npm run build && npm start` | Versão otimizada (mais rápida no uso diário) |
-| `npm run setup` | Cria `.env` + aplica migrações + seed (seguro rodar de novo) |
-| `npm run db:migrate` | Aplica migrações pendentes |
-| `npm run db:seed` | Insere dados iniciais (idempotente) |
-| `npm run db:backup` | Cópia consistente do banco em `data/backups/` |
-| `npm run db:studio` | Abre o Drizzle Studio para inspecionar o banco |
-| `npm run user:reset-password` | Redefine a senha do usuário master |
+| `npm run dev` | Servidor de desenvolvimento em `localhost:3000` |
+| `npm run setup` | Cria o `.env` com um `SESSION_SECRET` aleatório |
+| `npm run db:migrate` | Aplica migrações pendentes (usa `DIRECT_URL`) |
 | `npm run db:generate` | Gera nova migração após alterar `src/db/schema` |
+| `npm run db:seed` | Garante as categorias padrão em todas as contas (idempotente) |
+| `npm run db:copy-from-sqlite -- arquivo.db` | Copia, uma vez, os dados do antigo banco SQLite para o Postgres |
+| `npm run db:studio` | Abre o Drizzle Studio para inspecionar o banco |
+| `npm run user:reset-password` | Redefine a senha de uma conta pelo terminal |
 | `npm test` | Testes automatizados |
 | `npm run typecheck` / `npm run lint` | Verificações de tipo e estilo |
 
 ---
 
+## Segurança
+
+- Senhas com bcrypt; login em duas etapas; sessões revogáveis no banco.
+- Limite de tentativas **por IP** (login, cadastro, códigos e "esqueci a senha"), além do
+  bloqueio por conta após 5 senhas erradas.
+- Em produção, o envio de códigos exige SMTP (`MAIL_MODE=smtp`): nada vai para os logs.
+- **RLS ligado em todas as tabelas**: a API pública do Supabase não enxerga nenhum dado;
+  só o servidor do app, com a senha do banco, acessa.
+- Cabeçalhos de segurança (HSTS, X-Frame-Options, nosniff, Permissions-Policy).
+
 ## Backup
 
-Todo o seu histórico está em `data/financeiro.db`. Para backup:
+O plano gratuito do Supabase não faz backup. O workflow **Backup do banco (produção)**
+(`.github/workflows/backup.yml`) gera toda segunda-feira uma cópia **criptografada**
+(AES-256) e guarda por 90 dias nos *Artifacts* do GitHub Actions. Para ativar, cadastre os
+segredos `BACKUP_DATABASE_URL` e `BACKUP_PASSPHRASE` no repositório. Restaurar:
 
-- `npm run db:backup` (seguro mesmo com o app aberto), ou
-- copie a pasta `data/` com o app fechado.
+```bash
+gpg -d beaconfinance-AAAA-MM-DD.sql.gz.gpg | gunzip | psql "<url do banco>"
+```
 
----
+## Supabase gratuito: pausa por inatividade
 
-## Acesso remoto seguro (opcional)
-
-O servidor escuta **apenas em `127.0.0.1`** — ninguém na sua rede acessa diretamente.
-Para usar de fora de casa, publique por um túnel privado com HTTPS:
-
-- **Tailscale:** `tailscale serve --bg 3000` → acesse pelo endereço `https://<seu-pc>.<tailnet>.ts.net`
-  de qualquer dispositivo logado na sua tailnet.
-- **Cloudflare Tunnel:** `cloudflared tunnel --url http://localhost:3000` (idealmente com
-  Cloudflare Access na frente).
-
-Ao acessar por HTTPS, ajuste no `.env`: `APP_URL=<url https>` e `COOKIE_SECURE=true`.
+Projetos gratuitos pausam após 7 dias sem uso. A tarefa diária da Vercel
+(`/api/cron/keepalive`, protegida por `CRON_SECRET`) acessa o banco todo dia e ainda faz a
+faxina de sessões vencidas e códigos antigos.
 
 ---
 
 ## Estrutura
 
 ```text
-├── data/                 # banco SQLite + backups (gitignored)
-├── drizzle/              # migrações SQL geradas (versionadas)
-├── scripts/              # setup do .env, migrate, seed, backup
+├── .github/workflows/    # CI dos PRs e backup semanal
+├── drizzle/              # migrações SQL (Postgres) versionadas
+├── scripts/              # setup do .env, migrate, seed, cópia do SQLite antigo
 ├── src/
-│   ├── app/              # rotas (App Router)
+│   ├── app/              # rotas (App Router) e /api/cron
 │   ├── components/       # UI (layout, ui/, finance/, charts/)
-│   ├── db/               # conexão SQLite + schema por módulo
+│   ├── db/               # conexão Postgres + schema por módulo
 │   ├── lib/              # utilitários (auth, mail, dinheiro, datas)
 │   ├── server/           # regras de negócio e Server Actions
 │   └── env.ts            # validação do .env
-└── tests/                # Vitest
+├── tests/                # Vitest (Postgres em memória via PGlite)
+└── vercel.json           # build, região, tarefa diária e branches com deploy
 ```
 
 ### Convenções de dados
@@ -265,7 +268,7 @@ Ao acessar por HTTPS, ajuste no `.env`: `APP_URL=<url https>` e `COOKIE_SECURE=t
 
 ## Roadmap
 
-- [x] **Etapa 1** — Setup, estrutura, schema SQLite, `.env`
+- [x] **Etapa 1** — Setup, estrutura, schema (SQLite na época), `.env`
 - [x] **Etapa 2** — Cadastro do usuário master + login com 2FA (SMTP / console)
 - [x] **Etapa 3** — Layout (sidebar, dark mode) + CRUD de rendas, gastos, cartões e parcelas
 - [x] **Etapa 4** — Caixinhas com rendimento CDI e histórico de aportes
@@ -273,4 +276,4 @@ Ao acessar por HTTPS, ajuste no `.env`: `APP_URL=<url https>` e `COOKIE_SECURE=t
 - [x] **Etapa 6** — Dashboards mensal / semestral / anual, real vs. simulado
 - [x] **Etapa 7** — Importação de fatura (Nubank CSV, PicPay e Mercado Pago PDF)
 - [x] **Etapa 8** — Várias contas com dados separados, cadastro com e-mail confirmado e senha forte, "Esqueci minha senha"
-- [ ] **Etapa 9** — Hospedagem na Vercel + Supabase (Postgres)
+- [x] **Etapa 9** — Hospedagem na Vercel + Supabase (Postgres), limite por IP, backup e tarefa diária

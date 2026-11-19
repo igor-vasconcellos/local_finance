@@ -6,7 +6,7 @@ import { SESSION_COOKIE, verifySessionJwt } from "@/lib/auth/jwt";
  * A validação completa (sessão existe, não revogada) acontece em requireSession()
  * nas páginas e Server Actions protegidas.
  */
-const PUBLIC_PATHS = ["/login", "/verify", "/cadastro", "/esqueci-senha", "/redefinir-senha"];
+const PUBLIC_PATHS = ["/login", "/verify", "/cadastro", "/esqueci-senha", "/redefinir-senha", "/api/cron"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -24,6 +24,11 @@ export async function proxy(request: NextRequest) {
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "same-origin");
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+  if (request.nextUrl.protocol === "https:") {
+    // Navegador passa a usar sempre HTTPS neste domínio por 1 ano.
+    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
   return response;
 }
 

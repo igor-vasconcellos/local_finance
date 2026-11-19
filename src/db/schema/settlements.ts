@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
+import { check, index, integer, pgTable, text, unique } from "drizzle-orm/pg-core";
 import { MONTH_GLOB, nowIso } from "./_helpers";
 import { users } from "./auth";
 import { incomeSources, recurringExpenses } from "./base";
@@ -10,10 +10,10 @@ import { incomeSources, recurringExpenses } from "./base";
  * O valor é guardado no momento da confirmação: se a renda/gasto mudar de
  * valor depois, os meses já confirmados não são alterados.
  */
-export const monthlySettlements = sqliteTable(
+export const monthlySettlements = pgTable(
   "monthly_settlements",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
     userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -32,6 +32,6 @@ export const monthlySettlements = sqliteTable(
       sql`(${t.incomeId} IS NOT NULL AND ${t.expenseId} IS NULL) OR (${t.incomeId} IS NULL AND ${t.expenseId} IS NOT NULL)`,
     ),
     check("settlements_amount_positive", sql`${t.amountCents} > 0`),
-    check("settlements_month_fmt", sql`${t.month} GLOB '${sql.raw(MONTH_GLOB)}'`),
+    check("settlements_month_fmt", sql`${t.month} ~ '${sql.raw(MONTH_GLOB)}'`),
   ],
 );

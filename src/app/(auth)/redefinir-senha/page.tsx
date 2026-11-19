@@ -15,7 +15,7 @@ export default async function ResetPage() {
   await connection();
   const challengeId = await getPendingChallengeId();
   if (!challengeId) redirect("/esqueci-senha");
-  const target = getResendTarget(challengeId);
+  const target = await getResendTarget(challengeId);
 
   return (
     <AuthCard

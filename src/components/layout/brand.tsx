@@ -20,7 +20,7 @@ export function Brand({
         <Wallet className="size-5" aria-hidden />
       </span>
       <div className="leading-tight">
-        <p className="font-semibold tracking-tight">Local Finance</p>
+        <p className="font-semibold tracking-tight">BeaconFinance</p>
         {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
       </div>
     </>
@@ -30,9 +30,12 @@ export function Brand({
       <Link
         href={href}
         onClick={onNavigate}
-        aria-label="Local Finance — ir para a Visão geral"
+        aria-label="BeaconFinance — ir para a Visão geral"
         title="Ir para a Visão geral"
-        className={cn("flex items-center gap-3 rounded-xl transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-ring", className)}
+        className={cn(
+          "flex items-center gap-3 rounded-xl transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-ring",
+          className,
+        )}
       >
         {content}
       </Link>

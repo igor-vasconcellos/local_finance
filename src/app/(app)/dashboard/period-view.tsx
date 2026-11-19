@@ -12,8 +12,18 @@ import { cn } from "@/lib/utils";
 import { projectMonths } from "@/server/finance/projection";
 
 /** Visão semestral/anual: fluxo de caixa previsto, gráfico e tabela lado a lado. */
-export function PeriodView({ uid, state, length, today }: { uid: number; state: DashboardState; length: number; today: ISODate }) {
-  const { months, thresholds } = projectMonths(uid, state.start, length, today);
+export async function PeriodView({
+  uid,
+  state,
+  length,
+  today,
+}: {
+  uid: number;
+  state: DashboardState;
+  length: number;
+  today: ISODate;
+}) {
+  const { months, thresholds } = await projectMonths(uid, state.start, length, today);
   const sim = state.sim;
 
   const rows = months.map((m) => {
@@ -50,7 +60,13 @@ export function PeriodView({ uid, state, length, today }: { uid: number; state: 
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi label="Entradas previstas" value={formatBRL(income)} icon={<ArrowDownCircle />} tone="success" />
-        <Kpi label="Saídas previstas" value={formatBRL(outflow + (sim ? simulated : 0))} icon={<ArrowUpCircle />} tone="danger" hint={sim && simulated ? `inclui ${formatBRL(simulated)} simulados` : "Fixos + faturas + avulsos"} />
+        <Kpi
+          label="Saídas previstas"
+          value={formatBRL(outflow + (sim ? simulated : 0))}
+          icon={<ArrowUpCircle />}
+          tone="danger"
+          hint={sim && simulated ? `inclui ${formatBRL(simulated)} simulados` : "Fixos + faturas + avulsos"}
+        />
         <Kpi label="Guardado em metas" value={formatBRL(goals)} icon={<PiggyBank />} tone="primary" />
         <Kpi
           label="Saldo livre no período"
@@ -112,11 +128,21 @@ export function PeriodView({ uid, state, length, today }: { uid: number; state: 
                         {formatMonthShort(r.month)}
                       </Link>
                     </td>
-                    <td className="hidden px-3 py-2.5 text-right tabular-nums text-success sm:table-cell">{formatBRL(r.incomeCents)}</td>
+                    <td className="hidden px-3 py-2.5 text-right tabular-nums text-success sm:table-cell">
+                      {formatBRL(r.incomeCents)}
+                    </td>
                     <td className="hidden px-3 py-2.5 text-right tabular-nums sm:table-cell">{formatBRL(r.outflow)}</td>
-                    <td className="hidden px-3 py-2.5 text-right tabular-nums text-muted-foreground md:table-cell">{formatBRL(r.goalsCents)}</td>
-                    {sim && <td className="hidden px-3 py-2.5 text-right tabular-nums text-accent-foreground sm:table-cell">{r.simulatedCents ? `−${formatBRL(r.simulatedCents)}` : "—"}</td>}
-                    <td className={cn("px-3 py-2.5 text-right font-semibold tabular-nums", r.free < 0 && "text-danger")}>{formatBRL(r.free)}</td>
+                    <td className="hidden px-3 py-2.5 text-right tabular-nums text-muted-foreground md:table-cell">
+                      {formatBRL(r.goalsCents)}
+                    </td>
+                    {sim && (
+                      <td className="hidden px-3 py-2.5 text-right tabular-nums text-accent-foreground sm:table-cell">
+                        {r.simulatedCents ? `−${formatBRL(r.simulatedCents)}` : "—"}
+                      </td>
+                    )}
+                    <td className={cn("px-3 py-2.5 text-right font-semibold tabular-nums", r.free < 0 && "text-danger")}>
+                      {formatBRL(r.free)}
+                    </td>
                     <td className="py-2.5 pr-5 pl-3">
                       <HealthBadge health={r.shownHealth} compactOnMobile />
                     </td>
@@ -129,7 +155,11 @@ export function PeriodView({ uid, state, length, today }: { uid: number; state: 
                   <td className="hidden px-3 py-3 text-right tabular-nums sm:table-cell">{formatBRL(income)}</td>
                   <td className="hidden px-3 py-3 text-right tabular-nums sm:table-cell">{formatBRL(outflow)}</td>
                   <td className="hidden px-3 py-3 text-right tabular-nums md:table-cell">{formatBRL(goals)}</td>
-                  {sim && <td className="hidden px-3 py-3 text-right tabular-nums sm:table-cell">{simulated ? `−${formatBRL(simulated)}` : "—"}</td>}
+                  {sim && (
+                    <td className="hidden px-3 py-3 text-right tabular-nums sm:table-cell">
+                      {simulated ? `−${formatBRL(simulated)}` : "—"}
+                    </td>
+                  )}
                   <td className={cn("px-3 py-3 text-right tabular-nums", free < 0 && "text-danger")}>{formatBRL(free)}</td>
                   <td className="py-3 pr-5 pl-3" />
                 </tr>
@@ -138,7 +168,8 @@ export function PeriodView({ uid, state, length, today }: { uid: number; state: 
           </div>
           <p className="border-t px-5 py-3 text-xs text-muted-foreground">
             Valores previstos (rendas e gastos cadastrados + faturas). Clique no mês para ver os detalhes. Farol: verde acima de{" "}
-            {formatPct(thresholds.greenBp / 100, 0)} da renda livre, amarelo a partir de {formatPct(thresholds.yellowBp / 100, 0)}.
+            {formatPct(thresholds.greenBp / 100, 0)} da renda livre, amarelo a partir de {formatPct(thresholds.yellowBp / 100, 0)}
+            .
           </p>
         </Card>
       </div>

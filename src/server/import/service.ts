@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
+import { first } from "@/db/query";
 import {
   cardPurchases,
   categories,
@@ -62,7 +63,12 @@ export type ImportPreview = {
   /** Vencimento/fechamento vieram do arquivo (PDF) ou foram calculados pelo cartão (CSV). */
   datesFromFile: boolean;
   /** O banco usa dias diferentes dos cadastrados no cartão. */
-  scheduleMismatch: { closingDay: number | null; dueDay: number; cardClosingDay: number; cardDueDay: number } | null;
+  scheduleMismatch: {
+    closingDay: number | null;
+    dueDay: number;
+    cardClosingDay: number;
+    cardDueDay: number;
+  } | null;
   totals: ReturnType<typeof checkTotals>;
   markPaidDefault: boolean;
   multipleCards: boolean;
@@ -90,19 +96,19 @@ export function lineKeys(bank: ImportBank, lines: ParsedLine[]): string[] {
   });
 }
 
-function categoryResolver(uid: number) {
-  const cats = db
+async function categoryResolver(uid: number) {
+  const cats = await db
     .select({ id: categories.id, name: categories.name })
     .from(categories)
-    .where(and(eq(categories.userId, uid), eq(categories.kind, "expense")))
-    .all();
+    .where(and(eq(categories.userId, uid), eq(categories.kind, "expense")));
   const byName = new Map(cats.map((c) => [c.name.toLowerCase(), c.id]));
   const rules = new Map(
-    db
-      .select({ k: merchantRules.merchantKey, c: merchantRules.categoryId })
-      .from(merchantRules)
-      .where(eq(merchantRules.userId, uid))
-      .all().map((r) => [r.k, r.c]),
+    (
+      await db
+        .select({ k: merchantRules.merchantKey, c: merchantRules.categoryId })
+        .from(merchantRules)
+        .where(eq(merchantRules.userId, uid))
+    ).map((r) => [r.k, r.c]),
   );
   return (description: string): number | null => {
     const learned = rules.get(merchantKey(description));
@@ -112,18 +118,18 @@ function categoryResolver(uid: number) {
   };
 }
 
-export function buildPreview(
+export async function buildPreview(
   uid: number,
   cardId: number,
   fileName: string,
   st: ParsedStatement,
   today: ISODate = todayISO(),
-): ImportPreview {
-  const card = db
+): Promise<ImportPreview> {
+  const card = await db
     .select()
     .from(creditCards)
     .where(and(eq(creditCards.id, cardId), eq(creditCards.userId, uid)))
-    .get();
+    .then(first);
   if (!card) throw new Error("Cartão não encontrado.");
 
   // Fatura de destino: a do arquivo; no CSV, o vencimento vem do nome do arquivo ou
@@ -137,7 +143,12 @@ export function buildPreview(
     dueDate = st.dueDate;
     closingDate = st.closingDate;
   } else {
-    const latest = st.lines.filter((l) => l.kind !== "payment").map((l) => l.date).sort().at(-1) ?? today;
+    const latest =
+      st.lines
+        .filter((l) => l.kind !== "payment")
+        .map((l) => l.date)
+        .sort()
+        .at(-1) ?? today;
     referenceMonth = st.dueDate ? monthOf(st.dueDate) : firstInvoiceFor(latest, card.closingDay, card.dueDay).referenceMonth;
     const slot = slotForReferenceMonth(referenceMonth, card.closingDay, card.dueDay);
     dueDate = st.dueDate ?? slot.dueDate;
@@ -148,33 +159,41 @@ export function buildPreview(
   const fileDueDay = st.dueDate ? Number(st.dueDate.slice(8, 10)) : null;
   const scheduleMismatch =
     fileDueDay !== null && (fileDueDay !== card.dueDay || (fileClosingDay !== null && fileClosingDay !== card.closingDay))
-      ? { closingDay: fileClosingDay, dueDay: fileDueDay, cardClosingDay: card.closingDay, cardDueDay: card.dueDay }
+      ? {
+          closingDay: fileClosingDay,
+          dueDay: fileDueDay,
+          cardClosingDay: card.closingDay,
+          cardDueDay: card.dueDay,
+        }
       : null;
 
   const keys = lineKeys(st.bank, st.lines);
   const importedPurchaseKeys = new Set(
-    db
-      .select({ k: cardPurchases.importKey })
-      .from(cardPurchases)
-      .where(and(eq(cardPurchases.cardId, cardId), isNotNull(cardPurchases.importKey)))
-      .all()
-      .map((r) => r.k!),
+    (
+      await db
+        .select({ k: cardPurchases.importKey })
+        .from(cardPurchases)
+        .where(and(eq(cardPurchases.cardId, cardId), isNotNull(cardPurchases.importKey)))
+    ).map((r) => r.k!),
   );
   const importedCreditKeys = new Set(
-    db
-      .select({ k: invoiceCredits.importKey })
-      .from(invoiceCredits)
-      .innerJoin(invoices, eq(invoices.id, invoiceCredits.invoiceId))
-      .where(and(eq(invoices.cardId, cardId), isNotNull(invoiceCredits.importKey)))
-      .all()
-      .map((r) => r.k!),
+    (
+      await db
+        .select({ k: invoiceCredits.importKey })
+        .from(invoiceCredits)
+        .innerJoin(invoices, eq(invoices.id, invoiceCredits.invoiceId))
+        .where(and(eq(invoices.cardId, cardId), isNotNull(invoiceCredits.importKey)))
+    ).map((r) => r.k!),
   );
   // Compras lançadas à mão, para apontar possíveis duplicadas.
-  const manual = db
-    .select({ date: cardPurchases.purchaseDate, total: cardPurchases.totalCents, count: cardPurchases.installmentsCount })
+  const manual = await db
+    .select({
+      date: cardPurchases.purchaseDate,
+      total: cardPurchases.totalCents,
+      count: cardPurchases.installmentsCount,
+    })
     .from(cardPurchases)
-    .where(and(eq(cardPurchases.cardId, cardId), isNull(cardPurchases.importKey)))
-    .all();
+    .where(and(eq(cardPurchases.cardId, cardId), isNull(cardPurchases.importKey)));
   const usedManual = new Set<number>();
   const findManual = (l: ParsedLine) => {
     const idx = manual.findIndex((m, i) => {
@@ -186,7 +205,7 @@ export function buildPreview(
     return idx >= 0;
   };
 
-  const resolveCategory = categoryResolver(uid);
+  const resolveCategory = await categoryResolver(uid);
   const lines: PreviewLine[] = st.lines.map((l, i) => {
     const key = keys[i];
     let status: LineStatus;
@@ -254,33 +273,38 @@ export type CommitResult = {
   netCents: number;
 };
 
-function markPaid(tx: Tx, invoiceId: number, paidIds: number[]) {
-  const changed = tx
-    .update(invoices)
-    .set({ status: "paid", paidAt: new Date().toISOString() })
-    .where(and(eq(invoices.id, invoiceId), sql`${invoices.status} <> 'paid'`))
-    .run().changes;
+async function markPaid(tx: Tx, invoiceId: number, paidIds: number[]) {
+  const changed = (
+    await tx
+      .update(invoices)
+      .set({ status: "paid", paidAt: new Date().toISOString() })
+      .where(and(eq(invoices.id, invoiceId), sql`${invoices.status} <> 'paid'`))
+      .returning({ ok: sql`1` })
+  ).length;
   if (changed) paidIds.push(invoiceId);
 }
 
-export function commitImport(uid: number, input: CommitInput): CommitResult {
-  return db.transaction((tx) => {
-    const card = tx
+export async function commitImport(uid: number, input: CommitInput): Promise<CommitResult> {
+  return await db.transaction(async (tx) => {
+    const card = await tx
       .select()
       .from(creditCards)
       .where(and(eq(creditCards.id, input.cardId), eq(creditCards.userId, uid)))
-      .get();
+      .then(first);
     if (!card) throw new NotFoundError("Cartão");
-    for (const l of input.lines) assertCategory(tx, uid, l.categoryId, "expense");
+    for (const l of input.lines) await assertCategory(tx, uid, l.categoryId, "expense");
 
     if (input.updateCardSchedule && input.datesFromFile) {
-      tx.update(creditCards)
-        .set({ closingDay: Number(input.closingDate.slice(8, 10)), dueDay: Number(input.dueDate.slice(8, 10)) })
-        .where(eq(creditCards.id, card.id))
-        .run();
+      await tx
+        .update(creditCards)
+        .set({
+          closingDay: Number(input.closingDate.slice(8, 10)),
+          dueDay: Number(input.dueDate.slice(8, 10)),
+        })
+        .where(eq(creditCards.id, card.id));
     }
     // Recarrega (os dias podem ter mudado) para gerar as parcelas futuras com o calendário certo.
-    const fresh = tx.select().from(creditCards).where(eq(creditCards.id, card.id)).get()!;
+    const fresh = (await tx.select().from(creditCards).where(eq(creditCards.id, card.id)).then(first))!;
 
     // A fatura do arquivo: cria ou ajusta as datas para as que o banco informou.
     const ref = input.referenceMonth;
@@ -292,16 +316,26 @@ export function commitImport(uid: number, input: CommitInput): CommitResult {
       closingDate = slot.closingDate;
     }
     if (closingDate > dueDate) closingDate = dueDate;
-    const invoiceId = getOrCreateInvoice(tx, card.id, { referenceMonth: ref, closingDate, dueDate });
+    const invoiceId = await getOrCreateInvoice(tx, card.id, {
+      referenceMonth: ref,
+      closingDate,
+      dueDate,
+    });
     if (input.datesFromFile) {
-      tx.update(invoices).set({ closingDate, dueDate }).where(eq(invoices.id, invoiceId)).run();
+      await tx.update(invoices).set({ closingDate, dueDate }).where(eq(invoices.id, invoiceId));
     }
 
-    const importId = tx
-      .insert(invoiceImports)
-      .values({ cardId: card.id, bank: input.bank, fileName: input.fileName.slice(0, 200), referenceMonth: ref })
-      .returning({ id: invoiceImports.id })
-      .get().id;
+    const importId = (
+      await tx
+        .insert(invoiceImports)
+        .values({
+          cardId: card.id,
+          bank: input.bank,
+          fileName: input.fileName.slice(0, 200),
+          referenceMonth: ref,
+        })
+        .returning({ id: invoiceImports.id })
+    )[0].id;
 
     const paidIds: number[] = [];
     let purchases = 0;
@@ -311,29 +345,34 @@ export function commitImport(uid: number, input: CommitInput): CommitResult {
 
     for (const l of input.lines) {
       if (l.kind === "credit") {
-        const exists = tx
+        const exists = await tx
           .select({ id: invoiceCredits.id })
           .from(invoiceCredits)
           .innerJoin(invoices, eq(invoices.id, invoiceCredits.invoiceId))
           .where(and(eq(invoices.cardId, card.id), eq(invoiceCredits.importKey, l.key)))
-          .get();
+          .then(first);
         if (exists) {
           skipped++;
           continue;
         }
-        tx.insert(invoiceCredits)
-          .values({ invoiceId, description: l.description, creditDate: l.date, amountCents: l.amountCents, importId, importKey: l.key })
-          .run();
+        await tx.insert(invoiceCredits).values({
+          invoiceId,
+          description: l.description,
+          creditDate: l.date,
+          amountCents: l.amountCents,
+          importId,
+          importKey: l.key,
+        });
         credits++;
         netCents -= l.amountCents;
         continue;
       }
 
-      const exists = tx
+      const exists = await tx
         .select({ id: cardPurchases.id })
         .from(cardPurchases)
         .where(and(eq(cardPurchases.cardId, card.id), eq(cardPurchases.importKey, l.key)))
-        .get();
+        .then(first);
       if (exists) {
         skipped++;
         continue;
@@ -352,7 +391,7 @@ export function commitImport(uid: number, input: CommitInput): CommitResult {
         purchaseDate: l.date,
         notes: null,
       };
-      const { id } = tx
+      const [{ id }] = await tx
         .insert(cardPurchases)
         .values({
           cardId: purchaseInput.cardId,
@@ -365,41 +404,50 @@ export function commitImport(uid: number, input: CommitInput): CommitResult {
           importKey: l.key,
           firstInvoiceMonth: firstMonth,
         })
-        .returning({ id: cardPurchases.id })
-        .get();
-      generateInstallments(tx, id, purchaseInput, firstMonth);
+        .returning({ id: cardPurchases.id });
+      await generateInstallments(tx, id, purchaseInput, firstMonth);
 
       // Parcelas anteriores já foram cobradas em faturas passadas: ficam pagas.
       if (number > 1) {
-        const earlier = tx
+        const earlier = await tx
           .select({ id: invoices.id })
           .from(installments)
           .innerJoin(invoices, eq(invoices.id, installments.invoiceId))
-          .where(and(eq(installments.purchaseId, id), sql`${invoices.referenceMonth} < ${ref}`))
-          .all();
-        for (const e of earlier) markPaid(tx, e.id, paidIds);
+          .where(and(eq(installments.purchaseId, id), sql`${invoices.referenceMonth} < ${ref}`));
+        for (const e of earlier) await markPaid(tx, e.id, paidIds);
       }
 
       if (l.categoryId) {
         const key = merchantKey(l.description);
         if (key) {
-          tx.insert(merchantRules)
+          await tx
+            .insert(merchantRules)
             .values({ userId: uid, merchantKey: key, categoryId: l.categoryId })
-            .onConflictDoUpdate({ target: [merchantRules.userId, merchantRules.merchantKey], set: { categoryId: l.categoryId, updatedAt: new Date().toISOString() } })
-            .run();
+            .onConflictDoUpdate({
+              target: [merchantRules.userId, merchantRules.merchantKey],
+              set: {
+                categoryId: l.categoryId,
+                updatedAt: new Date().toISOString(),
+              },
+            });
         }
       }
       purchases++;
       netCents += l.amountCents;
     }
 
-    if (input.markPaid) markPaid(tx, invoiceId, paidIds);
+    if (input.markPaid) await markPaid(tx, invoiceId, paidIds);
 
-    tx.update(invoiceImports)
-      .set({ purchasesCount: purchases, creditsCount: credits, netCents, paidInvoiceIds: JSON.stringify(paidIds) })
-      .where(eq(invoiceImports.id, importId))
-      .run();
-    cleanupEmptyInvoices(tx, card.id);
+    await tx
+      .update(invoiceImports)
+      .set({
+        purchasesCount: purchases,
+        creditsCount: credits,
+        netCents,
+        paidInvoiceIds: JSON.stringify(paidIds),
+      })
+      .where(eq(invoiceImports.id, importId));
+    await cleanupEmptyInvoices(tx, card.id);
 
     return { importId, purchases, credits, skipped, netCents };
   });
@@ -407,32 +455,34 @@ export function commitImport(uid: number, input: CommitInput): CommitResult {
 
 // ------------------------------------------------------ Histórico/Desfazer --
 
-export type ImportHistoryRow = typeof invoiceImports.$inferSelect & { bankLabel: string };
+export type ImportHistoryRow = typeof invoiceImports.$inferSelect & {
+  bankLabel: string;
+};
 
-export function listImports(uid: number, cardId: number): ImportHistoryRow[] {
-  if (!ownsCard(db, uid, cardId)) return [];
-  return db
-    .select()
-    .from(invoiceImports)
-    .where(eq(invoiceImports.cardId, cardId))
-    .orderBy(desc(invoiceImports.createdAt), desc(invoiceImports.id))
-    .all()
-    .map((r) => ({ ...r, bankLabel: BANK_LABELS[r.bank] }));
+export async function listImports(uid: number, cardId: number): Promise<ImportHistoryRow[]> {
+  if (!(await ownsCard(db, uid, cardId))) return [];
+  return (
+    await db
+      .select()
+      .from(invoiceImports)
+      .where(eq(invoiceImports.cardId, cardId))
+      .orderBy(desc(invoiceImports.createdAt), desc(invoiceImports.id))
+  ).map((r) => ({ ...r, bankLabel: BANK_LABELS[r.bank] }));
 }
 
 /** Apaga tudo o que a importação criou e desfaz as faturas que ela marcou como pagas. */
-export function undoImport(uid: number, cardId: number, importId: number): boolean {
-  return db.transaction((tx) => {
-    if (!ownsCard(tx, uid, cardId)) return false;
-    const imp = tx
+export async function undoImport(uid: number, cardId: number, importId: number): Promise<boolean> {
+  return await db.transaction(async (tx) => {
+    if (!(await ownsCard(tx, uid, cardId))) return false;
+    const imp = await tx
       .select()
       .from(invoiceImports)
       .where(and(eq(invoiceImports.id, importId), eq(invoiceImports.cardId, cardId)))
-      .get();
+      .then(first);
     if (!imp) return false;
 
-    tx.delete(cardPurchases).where(eq(cardPurchases.importId, importId)).run(); // parcelas em cascata
-    tx.delete(invoiceCredits).where(eq(invoiceCredits.importId, importId)).run();
+    await tx.delete(cardPurchases).where(eq(cardPurchases.importId, importId)); // parcelas em cascata
+    await tx.delete(invoiceCredits).where(eq(invoiceCredits.importId, importId));
 
     let paidIds: number[] = [];
     try {
@@ -441,13 +491,13 @@ export function undoImport(uid: number, cardId: number, importId: number): boole
       paidIds = [];
     }
     if (paidIds.length) {
-      tx.update(invoices)
+      await tx
+        .update(invoices)
         .set({ status: "open", paidAt: null })
-        .where(and(inArray(invoices.id, paidIds), eq(invoices.cardId, cardId)))
-        .run();
+        .where(and(inArray(invoices.id, paidIds), eq(invoices.cardId, cardId)));
     }
-    tx.delete(invoiceImports).where(eq(invoiceImports.id, importId)).run();
-    cleanupEmptyInvoices(tx, cardId);
+    await tx.delete(invoiceImports).where(eq(invoiceImports.id, importId));
+    await cleanupEmptyInvoices(tx, cardId);
     return true;
   });
 }

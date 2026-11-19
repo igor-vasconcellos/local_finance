@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { deleteBoxAction, deleteBoxTxAction } from "@/server/actions/boxes";
 import type { getBoxDetail } from "@/server/finance/boxes";
 
-type Box = NonNullable<ReturnType<typeof getBoxDetail>>;
+type Box = NonNullable<Awaited<ReturnType<typeof getBoxDetail>>>;
 type DialogState = { kind: "edit" } | { kind: "tx"; type: "deposit" | "withdrawal" } | null;
 
 export function BoxDetailView({
@@ -55,13 +55,19 @@ export function BoxDetailView({
 
   return (
     <>
-      <Link href="/caixinhas" className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+      <Link
+        href="/caixinhas"
+        className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+      >
         <ArrowLeft className="size-4" aria-hidden /> Caixinhas
       </Link>
 
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">
-          <span className="inline-flex size-14 items-center justify-center rounded-2xl text-white shadow-sm" style={{ background: color }}>
+          <span
+            className="inline-flex size-14 items-center justify-center rounded-2xl text-white shadow-sm"
+            style={{ background: color }}
+          >
             <PiggyBank className="size-7" aria-hidden />
           </span>
           <div>
@@ -75,7 +81,11 @@ export function BoxDetailView({
           <Button onClick={() => setDialog({ kind: "tx", type: "deposit" })}>
             <ArrowDownToLine aria-hidden /> Aportar
           </Button>
-          <Button variant="secondary" onClick={() => setDialog({ kind: "tx", type: "withdrawal" })} disabled={box.balanceCents <= 0}>
+          <Button
+            variant="secondary"
+            onClick={() => setDialog({ kind: "tx", type: "withdrawal" })}
+            disabled={box.balanceCents <= 0}
+          >
             <ArrowUpFromLine aria-hidden /> Resgatar
           </Button>
           <Button variant="ghost" onClick={() => setDialog({ kind: "edit" })}>
@@ -153,7 +163,9 @@ export function BoxDetailView({
         </div>
         {box.transactions.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-5 py-12 text-center">
-            <p className="text-sm text-muted-foreground">Nenhuma movimentação ainda. Já tem dinheiro nessa caixinha? Registre o saldo atual como primeiro aporte.</p>
+            <p className="text-sm text-muted-foreground">
+              Nenhuma movimentação ainda. Já tem dinheiro nessa caixinha? Registre o saldo atual como primeiro aporte.
+            </p>
             <Button size="sm" onClick={() => setDialog({ kind: "tx", type: "deposit" })}>
               <ArrowDownToLine aria-hidden /> Registrar aporte
             </Button>
@@ -199,14 +211,20 @@ export function BoxDetailView({
       </Card>
 
       <p className="mt-6 text-xs text-muted-foreground">
-        Rendimento bruto estimado: capitalização diária em dias úteis (seg–sex, base 252), usando o histórico de CDI das Configurações.
-        Pode diferir alguns centavos do banco (feriados, IR e IOF não são considerados).
+        Rendimento bruto estimado: capitalização diária em dias úteis (seg–sex, base 252), usando o histórico de CDI das
+        Configurações. Pode diferir alguns centavos do banco (feriados, IR e IOF não são considerados).
       </p>
 
       <Dialog
         open={dialog !== null}
         onClose={close}
-        title={dialog?.kind === "edit" ? "Editar caixinha" : dialog?.kind === "tx" && dialog.type === "withdrawal" ? "Resgatar" : "Aportar"}
+        title={
+          dialog?.kind === "edit"
+            ? "Editar caixinha"
+            : dialog?.kind === "tx" && dialog.type === "withdrawal"
+              ? "Resgatar"
+              : "Aportar"
+        }
       >
         {dialog?.kind === "edit" && (
           <BoxForm
@@ -238,13 +256,32 @@ export function BoxDetailView({
   );
 }
 
-function Stat({ label, value, hint, tone, strong }: { label: string; value: string; hint?: string; tone?: "success"; strong?: boolean }) {
+function Stat({
+  label,
+  value,
+  hint,
+  tone,
+  strong,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: "success";
+  strong?: boolean;
+}) {
   return (
     <div className="rounded-2xl border bg-card p-5 shadow-xs">
       <p className="text-sm text-muted-foreground">{label}</p>
-      <p className={cn("mt-1 font-semibold tracking-tight tabular-nums", strong ? "text-2xl" : "text-xl", tone === "success" && "text-success")}>{value}</p>
+      <p
+        className={cn(
+          "mt-1 font-semibold tracking-tight tabular-nums",
+          strong ? "text-2xl" : "text-xl",
+          tone === "success" && "text-success",
+        )}
+      >
+        {value}
+      </p>
       {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 }
-

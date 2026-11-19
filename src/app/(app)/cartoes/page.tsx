@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Cartões" };
 
 export default async function CardsPage() {
   const uid = await requireUserId();
-  const cards = listCards(uid);
+  const cards = await listCards(uid);
   const active = cards.filter((c) => c.active);
 
   const totalLimit = active.reduce((a, c) => a + c.limitCents, 0);
@@ -25,18 +25,29 @@ export default async function CardsPage() {
 
       {cards.length > 0 && (
         <div className="mb-8 grid gap-4 sm:grid-cols-3">
-          <StatCard label="Faturas atuais a pagar" value={formatBRL(currentInvoices)} hint="Fatura corrente de cada cartão, exceto as já pagas" icon={<CreditCard />} tone="danger" />
+          <StatCard
+            label="Faturas atuais a pagar"
+            value={formatBRL(currentInvoices)}
+            hint="Fatura corrente de cada cartão, exceto as já pagas"
+            icon={<CreditCard />}
+            tone="danger"
+          />
           <StatCard
             label="Limite comprometido"
             value={formatBRL(totalUsed)}
             hint={totalLimit ? `${Math.round((totalUsed / totalLimit) * 100)}% de ${formatBRL(totalLimit)}` : undefined}
             icon={<Landmark />}
           />
-          <StatCard label="Limite disponível" value={formatBRL(Math.max(0, totalLimit - totalUsed))} icon={<Wallet />} tone="success" />
+          <StatCard
+            label="Limite disponível"
+            value={formatBRL(Math.max(0, totalLimit - totalUsed))}
+            icon={<Wallet />}
+            tone="success"
+          />
         </div>
       )}
 
-      <CardsView cards={cards} institutions={listInstitutionNames(uid)} />
+      <CardsView cards={cards} institutions={await listInstitutionNames(uid)} />
     </>
   );
 }
