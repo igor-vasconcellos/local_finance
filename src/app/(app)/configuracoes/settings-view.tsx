@@ -7,6 +7,7 @@ import { HealthBadge } from "@/components/finance/health-badge";
 import { Avatar } from "@/components/layout/avatar";
 import { AVATAR_COLORS } from "@/lib/profile";
 import { Guide } from "./guide";
+import { SettingsNav } from "./settings-nav";
 import { useFormAction } from "@/components/finance/use-form-action";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -54,17 +55,7 @@ const SECTIONS = [
 export function SettingsView(props: Props) {
   return (
     <div className="grid gap-8 lg:grid-cols-[180px_1fr]">
-      <nav aria-label="Seções" className="hidden lg:block">
-        <ul className="sticky top-10 grid gap-1 text-sm">
-          {SECTIONS.map((s) => (
-            <li key={s.id}>
-              <a href={`#${s.id}`} className="block rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted hover:text-foreground">
-                {s.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <SettingsNav sections={SECTIONS} />
 
       <div className="grid min-w-0 gap-6">
         <AccountSection user={props.user} />
@@ -91,7 +82,7 @@ function Section({ id, icon, title, description, children }: { id: string; icon:
             {icon}
           </span>
           <div>
-            <h2 id={`${id}-title`} className="font-semibold">
+            <h2 id={`${id}-title`} tabIndex={-1} className="font-semibold outline-none">
               {title}
             </h2>
             {description && <p className="text-sm text-muted-foreground">{description}</p>}

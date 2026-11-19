@@ -134,9 +134,14 @@ export function AppSidebar({ user, defaultCollapsed }: { user: User; defaultColl
       <aside
         className={cn(
           "sticky top-0 hidden h-svh shrink-0 flex-col gap-6 border-r bg-card/40 py-6 transition-[width] duration-200 lg:flex",
-          collapsed ? "w-[72px] px-3" : "w-64 px-4",
+          collapsed ? "w-[72px] cursor-e-resize px-3 hover:bg-muted/40" : "w-64 px-4",
         )}
         aria-label="Barra lateral"
+        title={collapsed ? "Clique para expandir" : undefined}
+        onClick={(e) => {
+          // Recolhida: clicar em qualquer espaço vazio (fora de links/botões) expande.
+          if (collapsed && !(e.target as HTMLElement).closest("a, button, input, select, label, form")) toggleCollapsed();
+        }}
       >
         <div className={cn("flex items-center", collapsed ? "flex-col gap-3" : "justify-between gap-2")}>
           {collapsed ? (
@@ -146,7 +151,7 @@ export function AppSidebar({ user, defaultCollapsed }: { user: User; defaultColl
               </span>
             </Link>
           ) : (
-            <Brand className="px-2" />
+            <Brand className="px-2" href="/dashboard" />
           )}
           <button
             type="button"
@@ -167,7 +172,7 @@ export function AppSidebar({ user, defaultCollapsed }: { user: User; defaultColl
 
       {/* Celular: barra superior + gaveta */}
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/85 px-4 backdrop-blur lg:hidden">
-        <Brand />
+        <Brand href="/dashboard" />
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -184,7 +189,7 @@ export function AppSidebar({ user, defaultCollapsed }: { user: User; defaultColl
           <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
           <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col gap-8 border-r bg-background px-4 py-5 shadow-xl">
             <div className="flex items-center justify-between">
-              <Brand className="px-2" />
+              <Brand className="px-2" href="/dashboard" onNavigate={() => setOpen(false)} />
               <button
                 type="button"
                 onClick={() => setOpen(false)}
