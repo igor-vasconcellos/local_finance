@@ -31,7 +31,7 @@ function printToConsole(to: string, code: string, expiresAt: string, purpose: Co
   const lines = [
     "",
     "────────────────────────────────────────────────",
-    `  🔐 LOCAL FINANCE — ${CONSOLE_TITLE[purpose]}`,
+    `  🔐 BEACONFINANCE — ${CONSOLE_TITLE[purpose]}`,
     "",
     `     ${code.split("").join("  ")}`,
     "",
