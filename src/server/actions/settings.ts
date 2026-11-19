@@ -6,7 +6,8 @@ import { parseBRL } from "@/lib/money";
 import { monthlyToAnnualPct, parsePct, pctToBp } from "@/lib/rates";
 import { dateField } from "@/lib/validation/finance";
 import { requireSession } from "@/server/auth/current";
-import { updateUserName } from "@/server/auth/users";
+import { AVATAR_COLORS } from "@/lib/profile";
+import { updateAvatarColor, updateUserName } from "@/server/auth/users";
 import { deleteCdiRate, setCdiRate, updateAccountBalance, updateThresholds } from "@/server/finance/settings";
 import { formObject, invalid, parseId, type ActionState } from "./form-state";
 
@@ -95,6 +96,15 @@ export async function saveThresholdsAction(_prev: ActionState, fd: FormData): Pr
     .safeParse(formObject(fd));
   if (!parsed.success) return invalid(parsed.error);
   updateThresholds(pctToBp(parsed.data.green), pctToBp(parsed.data.yellow));
+  refresh();
+  return { ok: true };
+}
+
+export async function saveAvatarColorAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const { user } = await requireSession();
+  const color = String(fd.get("color") ?? "");
+  if (!(AVATAR_COLORS as readonly string[]).includes(color)) return { error: "Cor inválida." };
+  updateAvatarColor(user.id, color);
   refresh();
   return { ok: true };
 }

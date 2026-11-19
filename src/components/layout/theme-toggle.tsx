@@ -13,7 +13,7 @@ const OPTIONS = [
 
 const subscribe = () => () => {};
 
-export function ThemeToggle() {
+export function ThemeToggle({ vertical }: { vertical?: boolean }) {
   const { theme, setTheme } = useTheme();
   // Só sabemos o tema salvo depois de hidratar no navegador.
   const mounted = useSyncExternalStore(subscribe, () => true, () => false);
@@ -22,7 +22,8 @@ export function ThemeToggle() {
     <div
       role="radiogroup"
       aria-label="Tema"
-      className="inline-flex items-center gap-1 rounded-full border bg-card p-1"
+      aria-orientation={vertical ? "vertical" : "horizontal"}
+      className={cn("inline-flex items-center gap-1 rounded-full border bg-card p-1", vertical && "flex-col")}
     >
       {OPTIONS.map(({ value, label, Icon }) => {
         const active = mounted && theme === value;

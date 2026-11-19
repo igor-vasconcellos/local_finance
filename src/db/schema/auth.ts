@@ -12,6 +12,7 @@ export const users = sqliteTable(
     passwordHash: text("password_hash").notNull(),
     failedLogins: integer("failed_logins").notNull().default(0),
     lockedUntil: text("locked_until"),
+    avatarColor: text("avatar_color"), // cor de fundo do avatar (perfil)
     ...timestamps(),
   },
   (t) => [

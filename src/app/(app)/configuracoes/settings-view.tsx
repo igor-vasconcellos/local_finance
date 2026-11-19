@@ -1,8 +1,12 @@
 "use client";
 
-import { Gauge, KeyRound, Landmark, Percent, ShieldCheck, Trash2, UserRound } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { DateInput } from "@/components/ui/date-input";
+import { BookOpen, Check, Gauge, KeyRound, Landmark, Percent, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import { startTransition, useActionState, useState, type ReactNode } from "react";
 import { HealthBadge } from "@/components/finance/health-badge";
+import { Avatar } from "@/components/layout/avatar";
+import { AVATAR_COLORS } from "@/lib/profile";
+import { Guide } from "./guide";
 import { useFormAction } from "@/components/finance/use-form-action";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -14,12 +18,14 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { Card } from "@/components/ui/page";
 import { Segmented } from "@/components/ui/segmented";
 import { formatDate, type ISODate } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 import { formatAmount, formatBRL } from "@/lib/money";
 import { annualToMonthlyPct, bpToPct, formatPct, monthlyToAnnualPct, parsePct } from "@/lib/rates";
 import {
   deleteCdiAction,
   saveBalanceAction,
   saveCdiAction,
+  saveAvatarColorAction,
   saveNameAction,
   saveThresholdsAction,
 } from "@/server/actions/settings";
@@ -27,7 +33,7 @@ import type { ActionState } from "@/server/actions/form-state";
 import type { AppSettings, CdiRate } from "@/server/finance/settings";
 
 type Props = {
-  user: { name: string; maskedEmail: string };
+  user: { name: string; maskedEmail: string; avatarColor: string | null };
   sessionExpiresAt: string;
   mailViaSmtp: boolean;
   settings: AppSettings;
@@ -42,6 +48,7 @@ const SECTIONS = [
   { id: "cdi", label: "CDI" },
   { id: "farol", label: "Farol de saúde" },
   { id: "seguranca", label: "Segurança" },
+  { id: "guia", label: "Guia de uso" },
 ];
 
 export function SettingsView(props: Props) {
@@ -65,6 +72,9 @@ export function SettingsView(props: Props) {
         <CdiSection rates={props.cdiRates} current={props.currentCdi} today={props.today} />
         <HealthSection settings={props.settings} />
         <SecuritySection {...props} />
+        <Section id="guia" icon={<BookOpen />} title="Guia de uso" description="O que cada parte do sistema faz e como usar.">
+          <Guide />
+        </Section>
       </div>
     </div>
   );
@@ -120,7 +130,51 @@ function AccountSection({ user }: { user: Props["user"] }) {
           <Saved state={state} message="Nome atualizado." />
         </div>
       </form>
+      <AvatarColorPicker name={user.name} color={user.avatarColor} />
     </Section>
+  );
+}
+
+function AvatarColorPicker({ name, color }: { name: string; color: string | null }) {
+  const [state, dispatch, pending] = useActionState(saveAvatarColorAction, {});
+  const [selected, setSelected] = useState(color ?? AVATAR_COLORS[0]);
+
+  const choose = (c: string) => {
+    setSelected(c);
+    const fd = new FormData();
+    fd.set("color", c);
+    startTransition(() => dispatch(fd));
+  };
+
+  return (
+    <div className="mt-6 border-t pt-5">
+      <p className="mb-1 text-sm font-medium">Cor do perfil</p>
+      <p className="mb-4 text-xs text-muted-foreground">Fundo do seu avatar na barra lateral. Salva ao clicar.</p>
+      <div className="flex flex-wrap items-center gap-4">
+        <Avatar name={name} color={selected} className="size-14 text-lg" />
+        <div role="radiogroup" aria-label="Cor do perfil" className="flex flex-wrap gap-2">
+          {AVATAR_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              role="radio"
+              aria-checked={selected === c}
+              aria-label={`Cor ${c}`}
+              disabled={pending}
+              onClick={() => choose(c)}
+              className={cn(
+                "flex size-8 items-center justify-center rounded-full ring-offset-2 ring-offset-card transition-shadow focus-visible:ring-2 focus-visible:ring-ring",
+                selected === c && "ring-2 ring-foreground/60",
+              )}
+              style={{ background: c }}
+            >
+              {selected === c && <Check className="size-4 text-white" aria-hidden />}
+            </button>
+          ))}
+        </div>
+        <Saved state={state} message="Cor atualizada." />
+      </div>
+    </div>
   );
 }
 
@@ -148,7 +202,7 @@ function BalanceSection({ settings, today }: { settings: AppSettings; today: ISO
           <MoneyInput {...fieldControlProps("balance", f.balance)} name="balance" defaultValue={current !== null ? formatAmount(Math.abs(current)) : ""} />
         </Field>
         <Field id="date" label="Data do saldo" error={f.date}>
-          <Input {...fieldControlProps("date", f.date)} name="date" type="date" defaultValue={today} />
+          <DateInput {...fieldControlProps("date", f.date)} name="date" defaultValue={today} />
         </Field>
         <label className="flex items-center gap-2 text-sm sm:col-span-2">
           <input type="checkbox" name="negative" defaultChecked={current !== null && current < 0} className="size-4 accent-[var(--primary)]" />
@@ -244,7 +298,7 @@ function CdiSection({ rates, current, today }: { rates: CdiRate[]; current: CdiR
             </div>
           </Field>
           <Field id="effectiveFrom" label="Vale a partir de" error={f.effectiveFrom}>
-            <Input {...fieldControlProps("effectiveFrom", f.effectiveFrom)} name="effectiveFrom" type="date" defaultValue={today} />
+            <DateInput {...fieldControlProps("effectiveFrom", f.effectiveFrom)} name="effectiveFrom" defaultValue={today} />
           </Field>
         </div>
         <div className="flex items-center gap-3">

@@ -117,6 +117,15 @@ reinicie o servidor. Se o SMTP falhar, o código é impresso no terminal como fa
   gráfico, coluna “Simulações” na tabela e parcelas “Simulado” nos vencimentos).
 - A navegação ← → anda 1, 6 ou 12 meses conforme a aba; “Hoje” volta ao período atual.
 
+### Interface
+
+- **Datas** sempre em dd/mm/aaaa (independe do idioma do navegador): digite só os
+  números ou use o calendário em português (clique no nome do mês para pular para
+  outro mês/ano). Meses em mm/aaaa com seletor de meses.
+- **Barra lateral recolhível** (botão ao lado do logo) — o app lembra sua escolha.
+- **Cor do perfil**: escolha a cor do seu avatar em Configurações → Conta.
+- **Guia de uso** completo em Configurações → Guia de uso.
+
 ### Atualizações
 
 Depois de `git pull`, basta rodar `npm run dev`: o banco é atualizado sozinho ao

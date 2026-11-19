@@ -1,5 +1,6 @@
 "use client";
 
+import { DateInput, MonthInput } from "@/components/ui/date-input";
 import { Pause, Pencil, Play, Plus, Trash2, TrendingUp } from "lucide-react";
 import { useCallback, useState } from "react";
 import { CategoryLabel } from "@/components/finance/category-dot";
@@ -186,15 +187,15 @@ function IncomeForm({
             <Input {...fieldControlProps("payDay", f.payDay)} name="payDay" type="number" min={1} max={31} defaultValue={income?.payDay ?? 5} />
           </Field>
           <Field id="startMonth" label="A partir de" error={f.startMonth}>
-            <Input {...fieldControlProps("startMonth", f.startMonth)} name="startMonth" type="month" defaultValue={income?.startMonth ?? defaultMonth} />
+            <MonthInput {...fieldControlProps("startMonth", f.startMonth)} name="startMonth" defaultValue={income?.startMonth ?? defaultMonth} />
           </Field>
           <Field id="endMonth" label="Até (opcional)" error={f.endMonth}>
-            <Input {...fieldControlProps("endMonth", f.endMonth)} name="endMonth" type="month" defaultValue={income?.endMonth ?? ""} />
+            <MonthInput {...fieldControlProps("endMonth", f.endMonth)} name="endMonth" defaultValue={income?.endMonth ?? null} optional />
           </Field>
         </div>
       ) : (
         <Field id="payDate" label="Data do recebimento" error={f.payDate}>
-          <Input {...fieldControlProps("payDate", f.payDate)} name="payDate" type="date" defaultValue={income?.payDate ?? today} />
+          <DateInput {...fieldControlProps("payDate", f.payDate)} name="payDate" defaultValue={income?.payDate ?? today} />
         </Field>
       )}
 

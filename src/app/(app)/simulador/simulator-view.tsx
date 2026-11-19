@@ -1,5 +1,6 @@
 "use client";
 
+import { DateInput } from "@/components/ui/date-input";
 import { ArrowRight, Calculator, CheckCircle2, CreditCard, Eye, EyeOff, Landmark, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -370,7 +371,7 @@ function SimulationForm({
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
         <Field id="purchaseDate" label="Data da compra" error={f.purchaseDate}>
-          <Input {...fieldControlProps("purchaseDate", f.purchaseDate)} name="purchaseDate" type="date" value={draft.date} onChange={(e) => set({ date: e.target.value })} />
+          <DateInput {...fieldControlProps("purchaseDate", f.purchaseDate)} name="purchaseDate" value={draft.date || null} onValueChange={(d) => set({ date: d ?? "" })} />
         </Field>
         <Field id="categoryId" label="Categoria (opcional)">
           <Select id="categoryId" name="categoryId" value={draft.categoryId} onChange={(e) => set({ categoryId: e.target.value })}>

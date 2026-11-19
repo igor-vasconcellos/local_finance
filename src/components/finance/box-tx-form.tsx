@@ -1,5 +1,6 @@
 "use client";
 
+import { DateInput } from "@/components/ui/date-input";
 import { useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -76,7 +77,7 @@ export function BoxTxForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field id="date" label="Data" error={f.date}>
-          <Input {...fieldControlProps("date", f.date)} name="date" type="date" defaultValue={today} max={today} />
+          <DateInput {...fieldControlProps("date", f.date)} name="date" defaultValue={today} max={today} />
         </Field>
         <Field id="notes" label="Observação (opcional)" error={f.notes}>
           <Input {...fieldControlProps("notes", f.notes)} name="notes" maxLength={500} />

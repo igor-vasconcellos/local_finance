@@ -1,5 +1,6 @@
 "use client";
 
+import { DateInput } from "@/components/ui/date-input";
 import { CalendarRange } from "lucide-react";
 import { useState } from "react";
 import { Alert } from "@/components/ui/alert";
@@ -103,13 +104,7 @@ export function PurchaseForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field id="purchaseDate" label="Data da compra" error={f.purchaseDate}>
-          <Input
-            {...fieldControlProps("purchaseDate", f.purchaseDate)}
-            name="purchaseDate"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
+<DateInput {...fieldControlProps("purchaseDate", f.purchaseDate)} name="purchaseDate" value={date || null} onValueChange={(d) => setDate(d ?? "")} />
         </Field>
         <Field id="cardId" label="Cartão" error={f.cardId}>
           <Select {...fieldControlProps("cardId", f.cardId)} name="cardId" value={cardId} onChange={(e) => setCardId(Number(e.target.value))}>

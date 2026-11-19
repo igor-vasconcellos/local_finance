@@ -1,48 +1,43 @@
 "use client";
 
-import { LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/server/actions/auth";
+import { Avatar } from "./avatar";
 import { Brand } from "./brand";
 import { NAV_SECTIONS } from "./nav-items";
+import { SIDEBAR_COOKIE } from "./sidebar-config";
 import { ThemeToggle } from "./theme-toggle";
 
-type User = { name: string; email: string };
+type User = { name: string; email: string; avatarColor: string | null };
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]!.toUpperCase())
-    .join("");
-}
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+function NavLinks({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
-    <nav className="grid gap-6" aria-label="Navegação principal">
+    <nav className={cn("grid", collapsed ? "gap-3" : "gap-6")} aria-label="Navegação principal">
       {NAV_SECTIONS.map((section, i) => (
         <div key={i} className="grid gap-1">
-          {section.title && (
-            <p className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">
-              {section.title}
-            </p>
-          )}
+          {section.title &&
+            (collapsed ? (
+              i > 0 && <hr className="mx-2 mb-2 border-border" />
+            ) : (
+              <p className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">{section.title}</p>
+            ))}
           {section.items.map(({ href, label, icon: Icon, soon }) => {
             const active = pathname === href || pathname.startsWith(`${href}/`);
+            const cls = cn(
+              "flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors",
+              collapsed ? "justify-center px-0" : "px-3",
+            );
             if (soon) {
               return (
-                <span
-                  key={href}
-                  className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground/60"
-                  aria-disabled
-                >
-                  <Icon className="size-4" aria-hidden />
-                  {label}
+                <span key={href} className={cn(cls, "cursor-not-allowed text-muted-foreground/60")} aria-disabled title={collapsed ? `${label} (em breve)` : undefined}>
+                  <Icon className="size-4 shrink-0" aria-hidden />
+                  {collapsed ? <span className="sr-only">{label}</span> : label}
                 </span>
               );
             }
@@ -52,14 +47,15 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
                 href={href}
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
+                title={collapsed ? label : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors",
-                  "hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring",
+                  cls,
+                  "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring",
                   active && "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground",
                 )}
               >
-                <Icon className="size-4" aria-hidden />
-                {label}
+                <Icon className={cn("shrink-0", collapsed ? "size-[18px]" : "size-4")} aria-hidden />
+                {collapsed ? <span className="sr-only">{label}</span> : label}
               </Link>
             );
           })}
@@ -69,35 +65,60 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-function UserFooter({ user }: { user: User }) {
+function LogoutButton() {
+  return (
+    <form action={logoutAction}>
+      <button
+        type="submit"
+        aria-label="Sair"
+        title="Sair"
+        className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+      >
+        <LogOut className="size-4" aria-hidden />
+      </button>
+    </form>
+  );
+}
+
+function UserFooter({ user, collapsed }: { user: User; collapsed?: boolean }) {
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center gap-3 border-t pt-4">
+        <ThemeToggle vertical />
+        <Link href="/configuracoes#conta" title={`${user.name} · ${user.email}`} aria-label="Perfil">
+          <Avatar name={user.name} color={user.avatarColor} />
+        </Link>
+        <LogoutButton />
+      </div>
+    );
+  }
   return (
     <div className="grid gap-3 border-t pt-4">
       <ThemeToggle />
       <div className="flex items-center gap-3">
-        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
-          {initials(user.name)}
-        </span>
+        <Link href="/configuracoes#conta" aria-label="Perfil" title="Perfil">
+          <Avatar name={user.name} color={user.avatarColor} />
+        </Link>
         <div className="min-w-0 flex-1 leading-tight">
           <p className="truncate text-sm font-medium">{user.name}</p>
           <p className="truncate text-xs text-muted-foreground">{user.email}</p>
         </div>
-        <form action={logoutAction}>
-          <button
-            type="submit"
-            aria-label="Sair"
-            title="Sair"
-            className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <LogOut className="size-4" aria-hidden />
-          </button>
-        </form>
+        <LogoutButton />
       </div>
     </div>
   );
 }
 
-export function AppSidebar({ user }: { user: User }) {
+export function AppSidebar({ user, defaultCollapsed }: { user: User; defaultCollapsed: boolean }) {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    // Lembrado entre visitas (o servidor lê o cookie e já renderiza no estado certo).
+    document.cookie = `${SIDEBAR_COOKIE}=${next ? "collapsed" : "expanded"}; path=/; max-age=31536000; samesite=lax`;
+  };
 
   // Trava a rolagem do fundo enquanto o menu do celular está aberto.
   useEffect(() => {
@@ -110,12 +131,38 @@ export function AppSidebar({ user }: { user: User }) {
   return (
     <>
       {/* Desktop */}
-      <aside className="sticky top-0 hidden h-svh w-64 shrink-0 flex-col gap-8 border-r bg-card/40 px-4 py-6 lg:flex">
-        <Brand className="px-2" />
-        <div className="flex-1 overflow-y-auto">
-          <NavLinks />
+      <aside
+        className={cn(
+          "sticky top-0 hidden h-svh shrink-0 flex-col gap-6 border-r bg-card/40 py-6 transition-[width] duration-200 lg:flex",
+          collapsed ? "w-[72px] px-3" : "w-64 px-4",
+        )}
+        aria-label="Barra lateral"
+      >
+        <div className={cn("flex items-center", collapsed ? "flex-col gap-3" : "justify-between gap-2")}>
+          {collapsed ? (
+            <Link href="/dashboard" aria-label="Local Finance — Visão geral" title="Local Finance">
+              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+                <Wallet className="size-5" aria-hidden />
+              </span>
+            </Link>
+          ) : (
+            <Brand className="px-2" />
+          )}
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"}
+            aria-expanded={!collapsed}
+            title={collapsed ? "Expandir" : "Recolher"}
+            className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            {collapsed ? <PanelLeftOpen className="size-4" aria-hidden /> : <PanelLeftClose className="size-4" aria-hidden />}
+          </button>
         </div>
-        <UserFooter user={user} />
+        <div className="flex-1 overflow-y-auto">
+          <NavLinks collapsed={collapsed} />
+        </div>
+        <UserFooter user={user} collapsed={collapsed} />
       </aside>
 
       {/* Celular: barra superior + gaveta */}

@@ -18,7 +18,7 @@ export default async function SettingsPage() {
     <>
       <PageHeader title="Configurações" description="Sua conta, parâmetros financeiros e segurança." />
       <SettingsView
-        user={{ name: user.name, maskedEmail: maskEmail(user.email) }}
+        user={{ name: user.name, maskedEmail: maskEmail(user.email), avatarColor: user.avatarColor }}
         sessionExpiresAt={expiresAt}
         mailViaSmtp={mailTransport === "smtp"}
         settings={settings}

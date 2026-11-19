@@ -15,6 +15,13 @@
       "when": 1795045716097,
       "tag": "0001_settlements_and_balance",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1795054450271,
+      "tag": "0002_avatar_color",
+      "breakpoints": true
     }
   ]
 }

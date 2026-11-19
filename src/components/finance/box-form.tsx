@@ -1,5 +1,6 @@
 "use client";
 
+import { DateInput } from "@/components/ui/date-input";
 import { Check, PiggyBank } from "lucide-react";
 import { useState } from "react";
 import { Alert } from "@/components/ui/alert";
@@ -75,7 +76,7 @@ export function BoxForm({ box, institutions, onDone }: { box?: BoxFormValues; in
             <MoneyInput {...fieldControlProps("goal", f.goal)} name="goal" defaultValue={box?.goalCents ? formatAmount(box.goalCents) : ""} />
           </Field>
           <Field id="goalDate" label="Até quando" error={f.goalDate} hint="Com data, o app calcula quanto guardar por mês">
-            <Input {...fieldControlProps("goalDate", f.goalDate, true)} name="goalDate" type="date" defaultValue={box?.goalDate ?? ""} />
+            <DateInput {...fieldControlProps("goalDate", f.goalDate, true)} name="goalDate" defaultValue={box?.goalDate ?? null} />
           </Field>
         </div>
       </fieldset>

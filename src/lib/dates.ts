@@ -141,3 +141,59 @@ export function installmentSchedule(
     invoiceForClosingMonth(addMonths(firstClosingMonth, i), closingDay, dueDay),
   );
 }
+
+// --------------------------------------------------------------------------
+// Formato brasileiro para campos de formulário (dd/mm/aaaa e mm/aaaa)
+// --------------------------------------------------------------------------
+
+/** "2026-12-20" → "20/12/2026" */
+export function isoToBR(iso: string | null | undefined): string {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+/** "20/12/2026" → "2026-12-20"; null se incompleta ou inexistente (ex.: 31/02). */
+export function brToISO(text: string): ISODate | null {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text.trim());
+  if (!m) return null;
+  const [, d, mo, y] = m.map(Number) as unknown as [number, number, number, number];
+  if (mo < 1 || mo > 12 || d < 1 || y < 1900 || y > 2200) return null;
+  if (d > daysInMonth(toMonth(y, mo))) return null;
+  return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+/** "2026-12" → "12/2026" */
+export function monthToBR(m: string | null | undefined): string {
+  if (!m || !/^\d{4}-\d{2}$/.test(m)) return "";
+  const [y, mo] = m.split("-");
+  return `${mo}/${y}`;
+}
+
+/** "12/2026" → "2026-12"; null se inválido. */
+export function brToMonth(text: string): Month | null {
+  const m = /^(\d{2})\/(\d{4})$/.exec(text.trim());
+  if (!m) return null;
+  const mo = Number(m[1]);
+  const y = Number(m[2]);
+  if (mo < 1 || mo > 12 || y < 1900 || y > 2200) return null;
+  return toMonth(y, mo);
+}
+
+/** Máscara de digitação: "20122026" → "20/12/2026" (progressiva). */
+export function maskDateBR(raw: string): string {
+  const d = raw.replace(/\D/g, "").slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+}
+
+/** Máscara de digitação: "122026" → "12/2026". */
+export function maskMonthBR(raw: string): string {
+  const d = raw.replace(/\D/g, "").slice(0, 6);
+  if (d.length <= 2) return d;
+  return `${d.slice(0, 2)}/${d.slice(2)}`;
+}
+
+export const WEEKDAYS_SHORT = ["D", "S", "T", "Q", "Q", "S", "S"];
+export const MONTH_NAMES = MONTHS_LONG.map((n) => n[0].toUpperCase() + n.slice(1));

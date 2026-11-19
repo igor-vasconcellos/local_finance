@@ -8,7 +8,7 @@ export const MAX_FAILED_LOGINS = 5;
 export const LOCKOUT_MINUTES = 15;
 export const MASTER_USER_ID = 1;
 
-export type PublicUser = { id: number; name: string; email: string };
+export type PublicUser = { id: number; name: string; email: string; avatarColor: string | null };
 
 export function hasMasterUser(): boolean {
   const row = db.select({ n: sql<number>`count(*)` }).from(users).get();
@@ -17,7 +17,7 @@ export function hasMasterUser(): boolean {
 
 export function getUserById(id: number): PublicUser | undefined {
   return db
-    .select({ id: users.id, name: users.name, email: users.email })
+    .select({ id: users.id, name: users.name, email: users.email, avatarColor: users.avatarColor })
     .from(users)
     .where(eq(users.id, id))
     .get();
@@ -43,7 +43,7 @@ export async function createMasterUser(input: {
         email: input.email.trim().toLowerCase(),
         passwordHash,
       })
-      .returning({ id: users.id, name: users.name, email: users.email })
+      .returning({ id: users.id, name: users.name, email: users.email, avatarColor: users.avatarColor })
       .get();
     return { ok: true, user };
   } catch (error) {
@@ -102,9 +102,13 @@ export async function authenticate(
     db.update(users).set({ failedLogins: 0, lockedUntil: null }).where(eq(users.id, user.id)).run();
   }
 
-  return { ok: true, user: { id: user.id, name: user.name, email: user.email } };
+  return { ok: true, user: { id: user.id, name: user.name, email: user.email, avatarColor: user.avatarColor } };
 }
 
 export function updateUserName(id: number, name: string): boolean {
   return db.update(users).set({ name: name.trim() }).where(eq(users.id, id)).run().changes > 0;
+}
+
+export function updateAvatarColor(id: number, color: string): boolean {
+  return db.update(users).set({ avatarColor: color }).where(eq(users.id, id)).run().changes > 0;
 }

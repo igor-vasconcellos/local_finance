@@ -1,5 +1,6 @@
 "use client";
 
+import { MonthInput } from "@/components/ui/date-input";
 import { Pause, Pencil, Play, Plus, Receipt, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { CategoryLabel } from "@/components/finance/category-dot";
@@ -162,10 +163,10 @@ function ExpenseForm({
           <Input {...fieldControlProps("dueDay", f.dueDay)} name="dueDay" type="number" min={1} max={31} defaultValue={expense?.dueDay ?? 10} />
         </Field>
         <Field id="startMonth" label="A partir de" error={f.startMonth}>
-          <Input {...fieldControlProps("startMonth", f.startMonth)} name="startMonth" type="month" defaultValue={expense?.startMonth ?? defaultMonth} />
+          <MonthInput {...fieldControlProps("startMonth", f.startMonth)} name="startMonth" defaultValue={expense?.startMonth ?? defaultMonth} />
         </Field>
         <Field id="endMonth" label="Até (opcional)" error={f.endMonth}>
-          <Input {...fieldControlProps("endMonth", f.endMonth)} name="endMonth" type="month" defaultValue={expense?.endMonth ?? ""} />
+          <MonthInput {...fieldControlProps("endMonth", f.endMonth)} name="endMonth" defaultValue={expense?.endMonth ?? null} optional />
         </Field>
       </div>
 
