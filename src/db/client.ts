@@ -18,8 +18,20 @@ const globalForDb = globalThis as unknown as {
   __pg?: ReturnType<typeof postgres>;
 };
 
+/**
+ * Remove da URL parâmetros que não são do Postgres (a integração da Vercel acrescenta
+ * coisas como "supa=base-pooler.x"; o driver repassaria isso ao servidor e daria erro).
+ */
+export function cleanDatabaseUrl(raw: string): string {
+  const url = new URL(raw);
+  for (const key of [...url.searchParams.keys()]) {
+    if (key !== "sslmode") url.searchParams.delete(key);
+  }
+  return url.toString();
+}
+
 function connect() {
-  return postgres(env.DATABASE_URL, {
+  return postgres(cleanDatabaseUrl(env.DATABASE_URL), {
     prepare: false,
     max: env.DATABASE_POOL_MAX,
     idle_timeout: 20,

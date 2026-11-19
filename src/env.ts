@@ -57,8 +57,19 @@ const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
+/**
+ * Aceita também os nomes criados pela integração Supabase ↔ Vercel (Marketplace):
+ * POSTGRES_URL (pooler em modo transação) e POSTGRES_URL_NON_POOLING.
+ */
+function withDatabaseAliases(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return {
+    ...source,
+    DATABASE_URL: source.DATABASE_URL || source.POSTGRES_URL,
+  };
+}
+
 function loadEnv(): Env {
-  const parsed = envSchema.safeParse(process.env);
+  const parsed = envSchema.safeParse(withDatabaseAliases(process.env));
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  • ${i.path.join(".")}: ${i.message}`).join("\n");
     throw new Error(`\n❌ Configuração inválida no .env:\n${issues}\n\nVeja o .env.example para referência.\n`);
