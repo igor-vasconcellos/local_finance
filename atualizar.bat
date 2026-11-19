@@ -16,12 +16,14 @@ if not errorlevel 1 (
 
 echo.
 echo  [1/3] Baixando atualizacoes...
+rem O npm pode reescrever o package-lock.json; descarta essa alteracao para o pull nao travar.
+git checkout -- package-lock.json 2> nul
 git pull
 if errorlevel 1 goto :erro
 
 echo.
 echo  [2/3] Instalando dependencias...
-call npm install
+call npm ci
 if errorlevel 1 goto :erro
 
 echo.

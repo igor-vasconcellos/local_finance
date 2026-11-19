@@ -48,7 +48,7 @@ exit /b 0
 :instalar
 echo.
 echo  Primeira execucao: instalando dependencias, pode levar alguns minutos...
-call npm install
+call npm ci
 if errorlevel 1 goto :erro
 goto :depois_instalar
 
