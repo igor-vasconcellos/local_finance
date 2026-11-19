@@ -10,13 +10,17 @@ import "./_load-env";
 import readline from "node:readline/promises";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
-import { db, sqlite } from "@/db/client";
+import { db } from "@/db/client";
+import { first } from "@/db/query";
 import { authChallenges, sessions, users } from "@/db/schema";
 import { passwordProblem } from "@/lib/auth/password-policy";
 
 async function main() {
   // Lê linha a linha (funciona tanto digitando quanto com entrada redirecionada).
-  const rl = readline.createInterface({ input: process.stdin, terminal: false });
+  const rl = readline.createInterface({
+    input: process.stdin,
+    terminal: false,
+  });
   const lines = rl[Symbol.asyncIterator]();
   const ask = async (q: string) => {
     process.stdout.write(q);
@@ -25,7 +29,7 @@ async function main() {
   };
 
   const email = (await ask("E-mail da conta: ")).trim().toLowerCase();
-  const user = db.select().from(users).where(eq(users.email, email)).get();
+  const user = await db.select().from(users).where(eq(users.email, email)).then(first);
   if (!user) {
     rl.close();
     console.log("ℹ️  Nenhuma conta com esse e-mail.");
@@ -37,14 +41,17 @@ async function main() {
   rl.close();
 
   if (password !== confirm) throw new Error("As senhas não conferem.");
-  const problem = passwordProblem(password, { name: user.name, email: user.email });
+  const problem = passwordProblem(password, {
+    name: user.name,
+    email: user.email,
+  });
   if (problem) throw new Error(problem);
 
   const passwordHash = await bcrypt.hash(password, 12);
-  db.transaction((tx) => {
-    tx.update(users).set({ passwordHash, failedLogins: 0, lockedUntil: null }).where(eq(users.id, user.id)).run();
-    tx.delete(sessions).where(eq(sessions.userId, user.id)).run();
-    tx.delete(authChallenges).where(eq(authChallenges.userId, user.id)).run();
+  await db.transaction(async (tx) => {
+    await tx.update(users).set({ passwordHash, failedLogins: 0, lockedUntil: null }).where(eq(users.id, user.id));
+    await tx.delete(sessions).where(eq(sessions.userId, user.id));
+    await tx.delete(authChallenges).where(eq(authChallenges.userId, user.id));
   });
 
   console.log("\n✅ Senha redefinida. Todas as sessões foram encerradas — faça login novamente.");
@@ -55,4 +62,4 @@ main()
     console.error(`\n❌ ${err instanceof Error ? err.message : err}`);
     process.exitCode = 1;
   })
-  .finally(() => sqlite.close());
+  .finally(() => process.exit());

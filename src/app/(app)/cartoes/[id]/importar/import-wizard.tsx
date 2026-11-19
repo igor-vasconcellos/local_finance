@@ -41,7 +41,15 @@ export function ImportWizard({ card, categories }: { card: CardInfo; categories:
         description={`Envie o arquivo da fatura do banco para lançar as compras no cartão ${card.name}.`}
       />
       {result ? (
-        <Done card={card} result={result.res} month={result.month} onAgain={() => { setResult(null); setPreview(null); }} />
+        <Done
+          card={card}
+          result={result.res}
+          month={result.month}
+          onAgain={() => {
+            setResult(null);
+            setPreview(null);
+          }}
+        />
       ) : preview ? (
         <Review
           preview={preview}
@@ -103,7 +111,9 @@ function UploadStep({ cardId, onPreview }: { cardId: number; onPreview: (p: Impo
           <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
             {pending ? <Loader2 className="size-6 animate-spin" aria-hidden /> : <FileUp className="size-6" aria-hidden />}
           </span>
-          <span className="font-semibold">{pending ? `Lendo ${fileName ?? "arquivo"}…` : "Arraste a fatura aqui ou clique para escolher"}</span>
+          <span className="font-semibold">
+            {pending ? `Lendo ${fileName ?? "arquivo"}…` : "Arraste a fatura aqui ou clique para escolher"}
+          </span>
           <span className="text-sm text-muted-foreground">PDF ou CSV · até 10 MB</span>
           <input
             ref={input}
@@ -116,7 +126,11 @@ function UploadStep({ cardId, onPreview }: { cardId: number; onPreview: (p: Impo
             aria-label="Arquivo da fatura"
           />
         </label>
-        {error && <Alert tone="danger" title="Não deu para importar">{error}</Alert>}
+        {error && (
+          <Alert tone="danger" title="Não deu para importar">
+            {error}
+          </Alert>
+        )}
       </div>
 
       <Card className="grid content-start gap-4 p-5 text-sm">
@@ -127,8 +141,8 @@ function UploadStep({ cardId, onPreview }: { cardId: number; onPreview: (p: Impo
           <Supported name="Mercado Pago" format="PDF" hint="App → Cartão → Faturas → Baixar PDF" />
         </ul>
         <p className="flex items-start gap-2 border-t pt-4 text-xs text-muted-foreground">
-          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
-          O arquivo é lido aqui no seu computador e não fica guardado. Nada é gravado antes de você conferir e confirmar.
+          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />O arquivo é lido pelo BeaconFinance e
+          descartado em seguida: não fica guardado. Nada é gravado antes de você conferir e confirmar.
         </p>
       </Card>
     </div>
@@ -169,7 +183,8 @@ function Review({
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
-  const update = (i: number, patch: Partial<PreviewLine>) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
+  const update = (i: number, patch: Partial<PreviewLine>) =>
+    setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   const selectable = (l: PreviewLine) => l.status !== "ignored" && l.status !== "imported";
 
   const sums = useMemo(() => {
@@ -254,7 +269,8 @@ function Review({
           (t.ok ? (
             <Alert tone="success" title="Leitura conferida">
               A soma das compras ({formatBRL(t.purchasesCents)})
-              {t.expectedCreditsCents !== null && ` e dos créditos (${formatBRL(t.creditsCents)})`} bate com o total informado na fatura.
+              {t.expectedCreditsCents !== null && ` e dos créditos (${formatBRL(t.creditsCents)})`} bate com o total informado na
+              fatura.
             </Alert>
           ) : (
             <Alert tone="warning" title="A soma não bateu com o total da fatura">
@@ -269,18 +285,28 @@ function Review({
         {m && preview.datesFromFile && (
           <Alert tone="warning" title="O banco usa dias diferentes dos cadastrados">
             <span className="block">
-              Pela fatura, o cartão fecha dia {m.closingDay ?? "?"} e vence dia {m.dueDay}. No app está fechando dia {m.cardClosingDay} e
-              vencendo dia {m.cardDueDay}.
+              Pela fatura, o cartão fecha dia {m.closingDay ?? "?"} e vence dia {m.dueDay}. No app está fechando dia{" "}
+              {m.cardClosingDay} e vencendo dia {m.cardDueDay}.
             </span>
             <label className="mt-2 flex items-center gap-2 text-foreground">
-              <input type="checkbox" checked={updateSchedule} onChange={(e) => setUpdateSchedule(e.target.checked)} className="size-4 accent-[var(--primary)]" />
+              <input
+                type="checkbox"
+                checked={updateSchedule}
+                onChange={(e) => setUpdateSchedule(e.target.checked)}
+                className="size-4 accent-[var(--primary)]"
+              />
               Atualizar o cartão para fechar dia {m.closingDay} e vencer dia {m.dueDay}
             </label>
           </Alert>
         )}
 
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={markPaid} onChange={(e) => setMarkPaid(e.target.checked)} className="size-4 accent-[var(--primary)]" />
+          <input
+            type="checkbox"
+            checked={markPaid}
+            onChange={(e) => setMarkPaid(e.target.checked)}
+            className="size-4 accent-[var(--primary)]"
+          />
           Esta fatura já está paga
         </label>
       </Card>
@@ -336,7 +362,9 @@ function Review({
                   )}
                   <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     <span className="tabular-nums sm:hidden">{formatDayMonth(l.date)}</span>
-                    {l.rawDescription !== l.description && l.kind !== "payment" && <span className="truncate">{l.rawDescription}</span>}
+                    {l.rawDescription !== l.description && l.kind !== "payment" && (
+                      <span className="truncate">{l.rawDescription}</span>
+                    )}
                     {l.installment && (
                       <Badge tone="primary">
                         Parcela {l.installment.number}/{l.installment.count}
@@ -390,23 +418,31 @@ function Review({
 
       {lines.some((l) => l.installment && l.installment.number > 1 && l.selected && selectable(l)) && (
         <Alert tone="info" title="Compras parceladas">
-          Cada parcela vira a compra completa: as parcelas anteriores ficam em faturas passadas (marcadas como pagas) e as próximas entram nas
-          faturas futuras.
+          Cada parcela vira a compra completa: as parcelas anteriores ficam em faturas passadas (marcadas como pagas) e as
+          próximas entram nas faturas futuras.
         </Alert>
       )}
 
-      {error && <Alert tone="danger" title="Não deu para importar">{error}</Alert>}
+      {error && (
+        <Alert tone="danger" title="Não deu para importar">
+          {error}
+        </Alert>
+      )}
 
       {/* Rodapé fixo com o resumo */}
       <div className="sticky bottom-4 z-20 rounded-2xl border bg-card/95 shadow-lg backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
           <p className="text-sm">
-            <span className="font-medium">{sums.purchases} compra{sums.purchases === 1 ? "" : "s"}</span>{" "}
+            <span className="font-medium">
+              {sums.purchases} compra{sums.purchases === 1 ? "" : "s"}
+            </span>{" "}
             <span className="tabular-nums text-muted-foreground">{formatBRL(sums.p)}</span>
             {sums.credits > 0 && (
               <>
                 {" · "}
-                <span className="font-medium">{sums.credits} crédito{sums.credits === 1 ? "" : "s"}</span>{" "}
+                <span className="font-medium">
+                  {sums.credits} crédito{sums.credits === 1 ? "" : "s"}
+                </span>{" "}
                 <span className="tabular-nums text-success">− {formatBRL(sums.c)}</span>
               </>
             )}
@@ -441,12 +477,18 @@ function Done({ card, result, month, onAgain }: { card: CardInfo; result: Commit
           {result.purchases} compra{result.purchases === 1 ? "" : "s"}
           {result.credits > 0 && ` e ${result.credits} crédito${result.credits === 1 ? "" : "s"}`} lançados na fatura de{" "}
           {formatMonthLong(month).toLowerCase()} · {formatBRL(result.netCents)}
-          {result.skipped > 0 && ` · ${result.skipped} já existia${result.skipped === 1 ? "" : "m"} e fo${result.skipped === 1 ? "i" : "ram"} pulado${result.skipped === 1 ? "" : "s"}`}
+          {result.skipped > 0 &&
+            ` · ${result.skipped} já existia${result.skipped === 1 ? "" : "m"} e fo${result.skipped === 1 ? "i" : "ram"} pulado${result.skipped === 1 ? "" : "s"}`}
         </p>
-        <p className="text-xs text-muted-foreground">Se algo saiu errado, dá para desfazer em “Importações” na página do cartão.</p>
+        <p className="text-xs text-muted-foreground">
+          Se algo saiu errado, dá para desfazer em “Importações” na página do cartão.
+        </p>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
-        <Link href={`/cartoes/${card.id}?fatura=${month}`} className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+        <Link
+          href={`/cartoes/${card.id}?fatura=${month}`}
+          className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
           <ReceiptText className="size-4" aria-hidden /> Ver fatura
         </Link>
         <Button variant="secondary" onClick={onAgain}>

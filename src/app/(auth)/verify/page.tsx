@@ -15,8 +15,8 @@ export const metadata: Metadata = { title: "Verificação" };
 
 export default async function VerifyPage({ searchParams }: PageProps<"/verify">) {
   await connection();
-  const target = getResendTarget(await getPendingChallengeId());
-  const user = target ? getUserById(target.userId) : undefined;
+  const target = await getResendTarget(await getPendingChallengeId());
+  const user = target ? await getUserById(target.userId) : undefined;
   if (!user || target!.purpose === "reset") redirect("/login");
 
   const { via } = await searchParams;
@@ -29,7 +29,9 @@ export default async function VerifyPage({ searchParams }: PageProps<"/verify">)
       title={signup ? "Confirme seu e-mail" : "Verificação em duas etapas"}
       description={
         viaConsole ? (
-          <>Digite o código de 6 dígitos gerado para <strong className="text-foreground">{maskEmail(user.email)}</strong>.</>
+          <>
+            Digite o código de 6 dígitos gerado para <strong className="text-foreground">{maskEmail(user.email)}</strong>.
+          </>
         ) : (
           <>
             Enviamos um código de 6 dígitos para <strong className="text-foreground">{maskEmail(user.email)}</strong>
@@ -40,12 +42,11 @@ export default async function VerifyPage({ searchParams }: PageProps<"/verify">)
     >
       {via === "smtp_failed" ? (
         <Alert tone="warning" title="Não foi possível enviar o e-mail." className="mb-5">
-          O código foi impresso no terminal onde o servidor está rodando. Confira as configurações SMTP no .env.
+          O código foi impresso no registro do servidor. Confira as configurações SMTP.
         </Alert>
       ) : viaConsole ? (
         <Alert tone="info" title="Modo desenvolvimento" className="mb-5">
-          O SMTP ainda não está configurado: o código aparece no terminal onde você rodou{" "}
-          <code className="font-mono">npm run dev</code>.
+          O SMTP ainda não está configurado: o código aparece no registro (terminal) do servidor.
         </Alert>
       ) : null}
 

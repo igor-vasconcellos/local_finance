@@ -11,18 +11,21 @@ import { requireUserId } from "@/server/auth/current";
 
 export const metadata: Metadata = { title: "Relatório por categoria" };
 
-const SOURCE_LABEL = { fixo: "Gasto fixo", "cartão": "Cartão", avulso: "Avulso" } as const;
+const SOURCE_LABEL = { fixo: "Gasto fixo", cartão: "Cartão", avulso: "Avulso" } as const;
 
 export default async function ReportPage({ searchParams }: PageProps<"/relatorios">) {
   const uid = await requireUserId();
   const current = currentMonth();
   const requested = (await searchParams).mes;
   const month = typeof requested === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(requested) ? requested : current;
-  const { rows, totalCents } = getCategoryReport(uid, month);
+  const { rows, totalCents } = await getCategoryReport(uid, month);
   // Créditos/estornos entram negativos: a participação é calculada sobre os gastos brutos.
   const grossCents = rows.filter((r) => r.totalCents > 0).reduce((a, r) => a + r.totalCents, 0) || 1;
   const bySource = (s: keyof typeof SOURCE_LABEL) =>
-    rows.flatMap((r) => r.items).filter((i) => i.source === s).reduce((a, i) => a + i.amountCents, 0);
+    rows
+      .flatMap((r) => r.items)
+      .filter((i) => i.source === s)
+      .reduce((a, i) => a + i.amountCents, 0);
 
   return (
     <>
@@ -33,7 +36,11 @@ export default async function ReportPage({ searchParams }: PageProps<"/relatorio
       />
 
       {rows.length === 0 ? (
-        <EmptyState icon={<FileBarChart />} title="Nenhum gasto neste mês" description="Navegue para outro mês ou cadastre gastos fixos e compras no cartão." />
+        <EmptyState
+          icon={<FileBarChart />}
+          title="Nenhum gasto neste mês"
+          description="Navegue para outro mês ou cadastre gastos fixos e compras no cartão."
+        />
       ) : (
         <>
           <div className="mb-6 grid gap-4 sm:grid-cols-4">
@@ -45,14 +52,20 @@ export default async function ReportPage({ searchParams }: PageProps<"/relatorio
 
           {/* Barra empilhada com a participação de cada categoria */}
           <Card className="mb-6 p-5">
-            <div className="flex h-3 overflow-hidden rounded-full bg-muted" role="img" aria-label="Participação de cada categoria no total">
-              {rows.filter((r) => r.totalCents > 0).map((r) => (
-                <div
-                  key={r.name}
-                  title={`${r.name}: ${formatPct((r.totalCents / grossCents) * 100, 1)}`}
-                  style={{ width: `${(r.totalCents / grossCents) * 100}%`, background: r.color ?? "var(--muted-foreground)" }}
-                />
-              ))}
+            <div
+              className="flex h-3 overflow-hidden rounded-full bg-muted"
+              role="img"
+              aria-label="Participação de cada categoria no total"
+            >
+              {rows
+                .filter((r) => r.totalCents > 0)
+                .map((r) => (
+                  <div
+                    key={r.name}
+                    title={`${r.name}: ${formatPct((r.totalCents / grossCents) * 100, 1)}`}
+                    style={{ width: `${(r.totalCents / grossCents) * 100}%`, background: r.color ?? "var(--muted-foreground)" }}
+                  />
+                ))}
             </div>
           </Card>
 
@@ -70,12 +83,21 @@ export default async function ReportPage({ searchParams }: PageProps<"/relatorio
                     <details className="group">
                       <summary className="grid cursor-pointer list-none grid-cols-[1fr_auto_auto] items-center gap-4 px-5 py-3.5 hover:bg-muted/40">
                         <span className="flex min-w-0 items-center gap-3">
-                          <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
-                          <span className="size-2.5 shrink-0 rounded-full" style={{ background: r.color ?? "var(--muted-foreground)" }} aria-hidden />
+                          <ChevronDown
+                            className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+                            aria-hidden
+                          />
+                          <span
+                            className="size-2.5 shrink-0 rounded-full"
+                            style={{ background: r.color ?? "var(--muted-foreground)" }}
+                            aria-hidden
+                          />
                           <span className="truncate font-medium">{r.name}</span>
                           <span className="text-xs text-muted-foreground">{r.items.length}</span>
                         </span>
-                        <span className="w-16 text-right text-sm tabular-nums text-muted-foreground">{pct > 0 ? formatPct(pct, 1) : "—"}</span>
+                        <span className="w-16 text-right text-sm tabular-nums text-muted-foreground">
+                          {pct > 0 ? formatPct(pct, 1) : "—"}
+                        </span>
                         <span className="w-28 text-right font-semibold tabular-nums">{formatBRL(r.totalCents)}</span>
                       </summary>
                       <ul className="border-t bg-muted/25">

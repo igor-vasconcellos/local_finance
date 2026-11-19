@@ -12,7 +12,7 @@ export async function toggleSettlementAction(fd: FormData): Promise<void> {
   const id = parseId(fd.get("id"));
   const month = String(fd.get("month") ?? "");
   if ((kind === "income" || kind === "expense") && id && /^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
-    setSettled(uid, kind, id, month, fd.get("settled") === "true");
+    await setSettled(uid, kind, id, month, fd.get("settled") === "true");
   }
   refresh();
 }

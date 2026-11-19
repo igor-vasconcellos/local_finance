@@ -1,266 +1,329 @@
 {
-  "version": "6",
-  "dialect": "sqlite",
-  "id": "c25b2386-d8bc-414c-86c6-1846f7bc7528",
-  "prevId": "469a13b3-fa6e-4d81-ae62-9f08cf6a6ec2",
+  "id": "188a2690-94a6-416f-b0b2-fe50ec0edfc4",
+  "prevId": "f77fbe85-492d-443c-bbfb-c37e0accee03",
+  "version": "7",
+  "dialect": "postgresql",
   "tables": {
-    "auth_challenges": {
+    "public.auth_challenges": {
       "name": "auth_challenges",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "user_id": {
           "name": "user_id",
           "type": "integer",
           "primaryKey": false,
+          "notNull": true
+        },
+        "purpose": {
+          "name": "purpose",
+          "type": "text",
+          "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "default": "'login'"
         },
         "code_hash": {
           "name": "code_hash",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "expires_at": {
           "name": "expires_at",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "attempts": {
           "name": "attempts",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "consumed_at": {
           "name": "consumed_at",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         }
       },
       "indexes": {
         "auth_challenges_user_idx": {
           "name": "auth_challenges_user_idx",
           "columns": [
-            "user_id"
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "auth_challenges_user_id_users_id_fk": {
           "name": "auth_challenges_user_id_users_id_fk",
           "tableFrom": "auth_challenges",
-          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
       "checkConstraints": {
         "auth_challenges_attempts_nonneg": {
           "name": "auth_challenges_attempts_nonneg",
           "value": "\"auth_challenges\".\"attempts\" >= 0"
+        },
+        "auth_challenges_purpose": {
+          "name": "auth_challenges_purpose",
+          "value": "\"auth_challenges\".\"purpose\" IN ('login', 'signup', 'reset')"
         }
-      }
+      },
+      "isRLSEnabled": false
     },
-    "sessions": {
+    "public.rate_limits": {
+      "name": "rate_limits",
+      "schema": "",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "window_start": {
+          "name": "window_start",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sessions": {
       "name": "sessions",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "user_id": {
           "name": "user_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "user_agent": {
           "name": "user_agent",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "ip": {
           "name": "ip",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         },
         "last_seen_at": {
           "name": "last_seen_at",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "expires_at": {
           "name": "expires_at",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "revoked_at": {
           "name": "revoked_at",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         }
       },
       "indexes": {
         "sessions_user_idx": {
           "name": "sessions_user_idx",
           "columns": [
-            "user_id"
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "sessions_user_id_users_id_fk": {
           "name": "sessions_user_id_users_id_fk",
           "tableFrom": "sessions",
-          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "users": {
+    "public.users": {
       "name": "users",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "name": "users_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
         },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "email": {
           "name": "email",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "password_hash": {
           "name": "password_hash",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "failed_logins": {
           "name": "failed_logins",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "locked_until": {
           "name": "locked_until",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
+        },
+        "avatar_color": {
+          "name": "avatar_color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email_verified_at": {
+          "name": "email_verified_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         }
       },
-      "indexes": {
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
         "users_email_unique": {
           "name": "users_email_unique",
           "columns": [
             "email"
           ],
-          "isUnique": true
+          "nullsNotDistinct": false
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "policies": {},
       "checkConstraints": {
-        "users_single_user": {
-          "name": "users_single_user",
-          "value": "\"users\".\"id\" = 1"
-        },
         "users_email_lowercase": {
           "name": "users_email_lowercase",
           "value": "\"users\".\"email\" = lower(\"users\".\"email\")"
@@ -269,53 +332,84 @@
           "name": "users_failed_logins_nonneg",
           "value": "\"users\".\"failed_logins\" >= 0"
         }
-      }
+      },
+      "isRLSEnabled": false
     },
-    "cdi_rates": {
+    "public.cdi_rates": {
       "name": "cdi_rates",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "identity": {
+            "name": "cdi_rates_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         },
         "annual_rate_bp": {
           "name": "annual_rate_bp",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "effective_from": {
           "name": "effective_from",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         }
       },
-      "indexes": {
-        "cdi_rates_effective_from_unique": {
-          "name": "cdi_rates_effective_from_unique",
+      "indexes": {},
+      "foreignKeys": {
+        "cdi_rates_user_id_users_id_fk": {
+          "name": "cdi_rates_user_id_users_id_fk",
+          "tableFrom": "cdi_rates",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "users",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "cdi_rates_user_date_uq": {
+          "name": "cdi_rates_user_date_uq",
           "columns": [
+            "user_id",
             "effective_from"
           ],
-          "isUnique": true
+          "nullsNotDistinct": false
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "policies": {},
       "checkConstraints": {
         "cdi_rates_positive": {
           "name": "cdi_rates_positive",
@@ -323,26 +417,26 @@
         },
         "cdi_rates_date_fmt": {
           "name": "cdi_rates_date_fmt",
-          "value": "\"cdi_rates\".\"effective_from\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'"
+          "value": "\"cdi_rates\".\"effective_from\" ~ '^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'"
         }
-      }
+      },
+      "isRLSEnabled": false
     },
-    "settings": {
+    "public.settings": {
       "name": "settings",
+      "schema": "",
       "columns": {
-        "id": {
-          "name": "id",
+        "user_id": {
+          "name": "user_id",
           "type": "integer",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "green_threshold_bp": {
           "name": "green_threshold_bp",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 2000
         },
         "yellow_threshold_bp": {
@@ -350,237 +444,324 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 500
         },
         "account_balance_cents": {
           "name": "account_balance_cents",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "account_balance_date": {
           "name": "account_balance_date",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "updated_at": {
           "name": "updated_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "settings_user_id_users_id_fk": {
+          "name": "settings_user_id_users_id_fk",
+          "tableFrom": "settings",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "users",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
       "checkConstraints": {
-        "settings_single_row": {
-          "name": "settings_single_row",
-          "value": "\"settings\".\"id\" = 1"
-        },
         "settings_thresholds_order": {
           "name": "settings_thresholds_order",
           "value": "\"settings\".\"yellow_threshold_bp\" >= 0 AND \"settings\".\"green_threshold_bp\" > \"settings\".\"yellow_threshold_bp\" AND \"settings\".\"green_threshold_bp\" <= 10000"
         }
-      }
+      },
+      "isRLSEnabled": false
     },
-    "categories": {
+    "public.categories": {
       "name": "categories",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "identity": {
+            "name": "categories_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "kind": {
           "name": "kind",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "color": {
           "name": "color",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "icon": {
           "name": "icon",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         }
       },
       "indexes": {
-        "categories_name_kind_uq": {
-          "name": "categories_name_kind_uq",
+        "categories_user_idx": {
+          "name": "categories_user_idx",
           "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "categories_user_id_users_id_fk": {
+          "name": "categories_user_id_users_id_fk",
+          "tableFrom": "categories",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "users",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "categories_user_name_kind_uq": {
+          "name": "categories_user_name_kind_uq",
+          "columns": [
+            "user_id",
             "name",
             "kind"
           ],
-          "isUnique": true
+          "nullsNotDistinct": false
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "policies": {},
       "checkConstraints": {
         "categories_kind": {
           "name": "categories_kind",
           "value": "\"categories\".\"kind\" IN ('income', 'expense')"
         }
-      }
+      },
+      "isRLSEnabled": false
     },
-    "income_sources": {
+    "public.income_sources": {
       "name": "income_sources",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "identity": {
+            "name": "income_sources_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "type": {
           "name": "type",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "amount_cents": {
           "name": "amount_cents",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "recurrence": {
           "name": "recurrence",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "pay_day": {
           "name": "pay_day",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "pay_date": {
           "name": "pay_date",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "start_month": {
           "name": "start_month",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "end_month": {
           "name": "end_month",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "category_id": {
           "name": "category_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "active": {
           "name": "active",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": true
         },
         "notes": {
           "name": "notes",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         }
       },
-      "indexes": {},
-      "foreignKeys": {
-        "income_sources_category_id_categories_id_fk": {
-          "name": "income_sources_category_id_categories_id_fk",
-          "tableFrom": "income_sources",
-          "tableTo": "categories",
-          "columnsFrom": [
-            "category_id"
+      "indexes": {
+        "income_sources_user_idx": {
+          "name": "income_sources_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "income_sources_user_id_users_id_fk": {
+          "name": "income_sources_user_id_users_id_fk",
+          "tableFrom": "income_sources",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "income_sources_category_id_categories_id_fk": {
+          "name": "income_sources_category_id_categories_id_fk",
+          "tableFrom": "income_sources",
+          "columnsFrom": [
+            "category_id"
+          ],
+          "tableTo": "categories",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
       "checkConstraints": {
         "income_type": {
           "name": "income_type",
@@ -596,180 +777,250 @@
         },
         "income_recurrence_fields": {
           "name": "income_recurrence_fields",
-          "value": "(\"income_sources\".\"recurrence\" = 'monthly' AND \"income_sources\".\"pay_day\" IS NOT NULL AND \"income_sources\".\"pay_day\" BETWEEN 1 AND 31)\n       OR (\"income_sources\".\"recurrence\" = 'once' AND \"income_sources\".\"pay_date\" IS NOT NULL AND \"income_sources\".\"pay_date\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]')"
+          "value": "(\"income_sources\".\"recurrence\" = 'monthly' AND \"income_sources\".\"pay_day\" IS NOT NULL AND \"income_sources\".\"pay_day\" BETWEEN 1 AND 31)\n       OR (\"income_sources\".\"recurrence\" = 'once' AND \"income_sources\".\"pay_date\" IS NOT NULL AND \"income_sources\".\"pay_date\" ~ '^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$')"
         },
         "income_start_month_fmt": {
           "name": "income_start_month_fmt",
-          "value": "\"income_sources\".\"start_month\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]'"
+          "value": "\"income_sources\".\"start_month\" ~ '^[0-9]{4}-[0-1][0-9]$'"
         },
         "income_end_month": {
           "name": "income_end_month",
-          "value": "\"income_sources\".\"end_month\" IS NULL OR (\"income_sources\".\"end_month\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]' AND \"income_sources\".\"end_month\" >= \"income_sources\".\"start_month\")"
+          "value": "\"income_sources\".\"end_month\" IS NULL OR (\"income_sources\".\"end_month\" ~ '^[0-9]{4}-[0-1][0-9]$' AND \"income_sources\".\"end_month\" >= \"income_sources\".\"start_month\")"
         }
-      }
+      },
+      "isRLSEnabled": false
     },
-    "institutions": {
+    "public.institutions": {
       "name": "institutions",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "identity": {
+            "name": "institutions_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "color": {
           "name": "color",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         }
       },
-      "indexes": {
-        "institutions_name_unique": {
-          "name": "institutions_name_unique",
+      "indexes": {},
+      "foreignKeys": {
+        "institutions_user_id_users_id_fk": {
+          "name": "institutions_user_id_users_id_fk",
+          "tableFrom": "institutions",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "users",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "institutions_user_name_uq": {
+          "name": "institutions_user_name_uq",
           "columns": [
+            "user_id",
             "name"
           ],
-          "isUnique": true
+          "nullsNotDistinct": false
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "one_time_expenses": {
+    "public.one_time_expenses": {
       "name": "one_time_expenses",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "identity": {
+            "name": "one_time_expenses_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         },
         "description": {
           "name": "description",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "category_id": {
           "name": "category_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "amount_cents": {
           "name": "amount_cents",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "date": {
           "name": "date",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "simulation_id": {
           "name": "simulation_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "notes": {
           "name": "notes",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         }
       },
       "indexes": {
+        "one_time_expenses_user_date_idx": {
+          "name": "one_time_expenses_user_date_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "one_time_expenses_user_id_users_id_fk": {
+          "name": "one_time_expenses_user_id_users_id_fk",
+          "tableFrom": "one_time_expenses",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "users",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "one_time_expenses_category_id_categories_id_fk": {
+          "name": "one_time_expenses_category_id_categories_id_fk",
+          "tableFrom": "one_time_expenses",
+          "columnsFrom": [
+            "category_id"
+          ],
+          "tableTo": "categories",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "one_time_expenses_simulation_id_simulations_id_fk": {
+          "name": "one_time_expenses_simulation_id_simulations_id_fk",
+          "tableFrom": "one_time_expenses",
+          "columnsFrom": [
+            "simulation_id"
+          ],
+          "tableTo": "simulations",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
         "one_time_expenses_simulation_id_unique": {
           "name": "one_time_expenses_simulation_id_unique",
           "columns": [
             "simulation_id"
           ],
-          "isUnique": true
-        },
-        "one_time_expenses_date_idx": {
-          "name": "one_time_expenses_date_idx",
-          "columns": [
-            "date"
-          ],
-          "isUnique": false
+          "nullsNotDistinct": false
         }
       },
-      "foreignKeys": {
-        "one_time_expenses_category_id_categories_id_fk": {
-          "name": "one_time_expenses_category_id_categories_id_fk",
-          "tableFrom": "one_time_expenses",
-          "tableTo": "categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "one_time_expenses_simulation_id_simulations_id_fk": {
-          "name": "one_time_expenses_simulation_id_simulations_id_fk",
-          "tableFrom": "one_time_expenses",
-          "tableTo": "simulations",
-          "columnsFrom": [
-            "simulation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "policies": {},
       "checkConstraints": {
         "one_time_amount_positive": {
           "name": "one_time_amount_positive",
@@ -777,120 +1028,165 @@
         },
         "one_time_date_fmt": {
           "name": "one_time_date_fmt",
-          "value": "\"one_time_expenses\".\"date\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'"
+          "value": "\"one_time_expenses\".\"date\" ~ '^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'"
         }
-      }
+      },
+      "isRLSEnabled": false
     },
-    "recurring_expenses": {
+    "public.recurring_expenses": {
       "name": "recurring_expenses",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "identity": {
+            "name": "recurring_expenses_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "category_id": {
           "name": "category_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "amount_cents": {
           "name": "amount_cents",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "due_day": {
           "name": "due_day",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "start_month": {
           "name": "start_month",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "end_month": {
           "name": "end_month",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "active": {
           "name": "active",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": true
         },
         "notes": {
           "name": "notes",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         }
       },
       "indexes": {
         "recurring_expenses_category_idx": {
           "name": "recurring_expenses_category_idx",
           "columns": [
-            "category_id"
+            {
+              "expression": "category_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "recurring_expenses_user_idx": {
+          "name": "recurring_expenses_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
-        "recurring_expenses_category_id_categories_id_fk": {
-          "name": "recurring_expenses_category_id_categories_id_fk",
+        "recurring_expenses_user_id_users_id_fk": {
+          "name": "recurring_expenses_user_id_users_id_fk",
           "tableFrom": "recurring_expenses",
-          "tableTo": "categories",
           "columnsFrom": [
-            "category_id"
+            "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "recurring_expenses_category_id_categories_id_fk": {
+          "name": "recurring_expenses_category_id_categories_id_fk",
+          "tableFrom": "recurring_expenses",
+          "columnsFrom": [
+            "category_id"
+          ],
+          "tableTo": "categories",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
       "checkConstraints": {
         "recurring_amount_positive": {
           "name": "recurring_amount_positive",
@@ -902,156 +1198,222 @@
         },
         "recurring_start_month_fmt": {
           "name": "recurring_start_month_fmt",
-          "value": "\"recurring_expenses\".\"start_month\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]'"
+          "value": "\"recurring_expenses\".\"start_month\" ~ '^[0-9]{4}-[0-1][0-9]$'"
         },
         "recurring_end_month": {
           "name": "recurring_end_month",
-          "value": "\"recurring_expenses\".\"end_month\" IS NULL OR (\"recurring_expenses\".\"end_month\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]' AND \"recurring_expenses\".\"end_month\" >= \"recurring_expenses\".\"start_month\")"
+          "value": "\"recurring_expenses\".\"end_month\" IS NULL OR (\"recurring_expenses\".\"end_month\" ~ '^[0-9]{4}-[0-1][0-9]$' AND \"recurring_expenses\".\"end_month\" >= \"recurring_expenses\".\"start_month\")"
         }
-      }
+      },
+      "isRLSEnabled": false
     },
-    "card_purchases": {
+    "public.card_purchases": {
       "name": "card_purchases",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "identity": {
+            "name": "card_purchases_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
         },
         "card_id": {
           "name": "card_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "category_id": {
           "name": "category_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "description": {
           "name": "description",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "total_cents": {
           "name": "total_cents",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "installments_count": {
           "name": "installments_count",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "purchase_date": {
           "name": "purchase_date",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "simulation_id": {
           "name": "simulation_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "notes": {
           "name": "notes",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
+        },
+        "import_id": {
+          "name": "import_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "import_key": {
+          "name": "import_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_invoice_month": {
+          "name": "first_invoice_month",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         }
       },
       "indexes": {
-        "card_purchases_simulation_id_unique": {
-          "name": "card_purchases_simulation_id_unique",
-          "columns": [
-            "simulation_id"
-          ],
-          "isUnique": true
-        },
         "card_purchases_card_idx": {
           "name": "card_purchases_card_idx",
           "columns": [
-            "card_id"
+            {
+              "expression": "card_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "card_purchases_import_idx": {
+          "name": "card_purchases_import_idx",
+          "columns": [
+            {
+              "expression": "import_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "card_purchases_card_id_credit_cards_id_fk": {
           "name": "card_purchases_card_id_credit_cards_id_fk",
           "tableFrom": "card_purchases",
-          "tableTo": "credit_cards",
           "columnsFrom": [
             "card_id"
           ],
+          "tableTo": "credit_cards",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "restrict"
         },
         "card_purchases_category_id_categories_id_fk": {
           "name": "card_purchases_category_id_categories_id_fk",
           "tableFrom": "card_purchases",
-          "tableTo": "categories",
           "columnsFrom": [
             "category_id"
           ],
+          "tableTo": "categories",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "set null"
         },
         "card_purchases_simulation_id_simulations_id_fk": {
           "name": "card_purchases_simulation_id_simulations_id_fk",
           "tableFrom": "card_purchases",
-          "tableTo": "simulations",
           "columnsFrom": [
             "simulation_id"
           ],
+          "tableTo": "simulations",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "card_purchases_import_id_invoice_imports_id_fk": {
+          "name": "card_purchases_import_id_invoice_imports_id_fk",
+          "tableFrom": "card_purchases",
+          "columnsFrom": [
+            "import_id"
+          ],
+          "tableTo": "invoice_imports",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "card_purchases_simulation_id_unique": {
+          "name": "card_purchases_simulation_id_unique",
+          "columns": [
+            "simulation_id"
+          ],
+          "nullsNotDistinct": false
+        },
+        "card_purchases_import_key_uq": {
+          "name": "card_purchases_import_key_uq",
+          "columns": [
+            "card_id",
+            "import_key"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
       "checkConstraints": {
         "purchases_total_positive": {
           "name": "purchases_total_positive",
@@ -1063,68 +1425,79 @@
         },
         "purchases_date_fmt": {
           "name": "purchases_date_fmt",
-          "value": "\"card_purchases\".\"purchase_date\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'"
+          "value": "\"card_purchases\".\"purchase_date\" ~ '^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'"
         }
-      }
+      },
+      "isRLSEnabled": false
     },
-    "credit_cards": {
+    "public.credit_cards": {
       "name": "credit_cards",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "identity": {
+            "name": "credit_cards_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "institution_id": {
           "name": "institution_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "limit_cents": {
           "name": "limit_cents",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "closing_day": {
           "name": "closing_day",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "due_day": {
           "name": "due_day",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "color": {
           "name": "color",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "active": {
           "name": "active",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": true
         },
         "created_at": {
@@ -1132,36 +1505,64 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         }
       },
-      "indexes": {},
-      "foreignKeys": {
-        "credit_cards_institution_id_institutions_id_fk": {
-          "name": "credit_cards_institution_id_institutions_id_fk",
-          "tableFrom": "credit_cards",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
+      "indexes": {
+        "credit_cards_user_idx": {
+          "name": "credit_cards_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "credit_cards_user_id_users_id_fk": {
+          "name": "credit_cards_user_id_users_id_fk",
+          "tableFrom": "credit_cards",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "credit_cards_institution_id_institutions_id_fk": {
+          "name": "credit_cards_institution_id_institutions_id_fk",
+          "tableFrom": "credit_cards",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "tableTo": "institutions",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
       "checkConstraints": {
         "cards_limit_nonneg": {
           "name": "cards_limit_nonneg",
@@ -1175,94 +1576,112 @@
           "name": "cards_due_day",
           "value": "\"credit_cards\".\"due_day\" BETWEEN 1 AND 31"
         }
-      }
+      },
+      "isRLSEnabled": false
     },
-    "installments": {
+    "public.installments": {
       "name": "installments",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "identity": {
+            "name": "installments_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
         },
         "purchase_id": {
           "name": "purchase_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "invoice_id": {
           "name": "invoice_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "number": {
           "name": "number",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "amount_cents": {
           "name": "amount_cents",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         }
       },
       "indexes": {
         "installments_invoice_idx": {
           "name": "installments_invoice_idx",
           "columns": [
-            "invoice_id"
+            {
+              "expression": "invoice_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
-        },
-        "installments_purchase_number_uq": {
-          "name": "installments_purchase_number_uq",
-          "columns": [
-            "purchase_id",
-            "number"
-          ],
-          "isUnique": true
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "installments_purchase_id_card_purchases_id_fk": {
           "name": "installments_purchase_id_card_purchases_id_fk",
           "tableFrom": "installments",
-          "tableTo": "card_purchases",
           "columnsFrom": [
             "purchase_id"
           ],
+          "tableTo": "card_purchases",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "installments_invoice_id_invoices_id_fk": {
           "name": "installments_invoice_id_invoices_id_fk",
           "tableFrom": "installments",
-          "tableTo": "invoices",
           "columnsFrom": [
             "invoice_id"
           ],
+          "tableTo": "invoices",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "restrict"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "installments_purchase_number_uq": {
+          "name": "installments_purchase_number_uq",
+          "columns": [
+            "purchase_id",
+            "number"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
       "checkConstraints": {
         "installments_number_positive": {
           "name": "installments_number_positive",
@@ -1272,104 +1691,400 @@
           "name": "installments_amount_positive",
           "value": "\"installments\".\"amount_cents\" > 0"
         }
-      }
+      },
+      "isRLSEnabled": false
     },
-    "invoices": {
-      "name": "invoices",
+    "public.invoice_credits": {
+      "name": "invoice_credits",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "identity": {
+            "name": "invoice_credits_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
         },
-        "card_id": {
-          "name": "card_id",
+        "invoice_id": {
+          "name": "invoice_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
-        "reference_month": {
-          "name": "reference_month",
+        "description": {
+          "name": "description",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
-        "closing_date": {
-          "name": "closing_date",
+        "credit_date": {
+          "name": "credit_date",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
-        "due_date": {
-          "name": "due_date",
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "import_id": {
+          "name": "import_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "import_key": {
+          "name": "import_key",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'open'"
-        },
-        "paid_at": {
-          "name": "paid_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
+        }
+      },
+      "indexes": {
+        "invoice_credits_invoice_idx": {
+          "name": "invoice_credits_invoice_idx",
+          "columns": [
+            {
+              "expression": "invoice_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "invoice_credits_import_idx": {
+          "name": "invoice_credits_import_idx",
+          "columns": [
+            {
+              "expression": "import_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "invoice_credits_invoice_id_invoices_id_fk": {
+          "name": "invoice_credits_invoice_id_invoices_id_fk",
+          "tableFrom": "invoice_credits",
+          "columnsFrom": [
+            "invoice_id"
+          ],
+          "tableTo": "invoices",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "invoice_credits_import_id_invoice_imports_id_fk": {
+          "name": "invoice_credits_import_id_invoice_imports_id_fk",
+          "tableFrom": "invoice_credits",
+          "columnsFrom": [
+            "import_id"
+          ],
+          "tableTo": "invoice_imports",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "invoice_credits_import_key_uq": {
+          "name": "invoice_credits_import_key_uq",
+          "columns": [
+            "invoice_id",
+            "import_key"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "invoice_credits_amount_positive": {
+          "name": "invoice_credits_amount_positive",
+          "value": "\"invoice_credits\".\"amount_cents\" > 0"
+        },
+        "invoice_credits_date_fmt": {
+          "name": "invoice_credits_date_fmt",
+          "value": "\"invoice_credits\".\"credit_date\" ~ '^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.invoice_imports": {
+      "name": "invoice_imports",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "name": "invoice_imports_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
+        },
+        "card_id": {
+          "name": "card_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bank": {
+          "name": "bank",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_name": {
+          "name": "file_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reference_month": {
+          "name": "reference_month",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purchases_count": {
+          "name": "purchases_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "credits_count": {
+          "name": "credits_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "net_cents": {
+          "name": "net_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "paid_invoice_ids": {
+          "name": "paid_invoice_ids",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
+        }
+      },
+      "indexes": {
+        "invoice_imports_card_idx": {
+          "name": "invoice_imports_card_idx",
+          "columns": [
+            {
+              "expression": "card_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "invoice_imports_card_id_credit_cards_id_fk": {
+          "name": "invoice_imports_card_id_credit_cards_id_fk",
+          "tableFrom": "invoice_imports",
+          "columnsFrom": [
+            "card_id"
+          ],
+          "tableTo": "credit_cards",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "invoice_imports_bank": {
+          "name": "invoice_imports_bank",
+          "value": "\"invoice_imports\".\"bank\" IN ('nubank', 'picpay', 'mercadopago')"
+        },
+        "invoice_imports_month_fmt": {
+          "name": "invoice_imports_month_fmt",
+          "value": "\"invoice_imports\".\"reference_month\" ~ '^[0-9]{4}-[0-1][0-9]$'"
+        },
+        "invoice_imports_counts": {
+          "name": "invoice_imports_counts",
+          "value": "\"invoice_imports\".\"purchases_count\" >= 0 AND \"invoice_imports\".\"credits_count\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.invoices": {
+      "name": "invoices",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "name": "invoices_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
+        },
+        "card_id": {
+          "name": "card_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reference_month": {
+          "name": "reference_month",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "closing_date": {
+          "name": "closing_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "due_date": {
+          "name": "due_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'open'"
+        },
+        "paid_at": {
+          "name": "paid_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         }
       },
       "indexes": {
         "invoices_month_idx": {
           "name": "invoices_month_idx",
           "columns": [
-            "reference_month"
+            {
+              "expression": "reference_month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
-        },
-        "invoices_card_month_uq": {
-          "name": "invoices_card_month_uq",
-          "columns": [
-            "card_id",
-            "reference_month"
-          ],
-          "isUnique": true
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "invoices_card_id_credit_cards_id_fk": {
           "name": "invoices_card_id_credit_cards_id_fk",
           "tableFrom": "invoices",
-          "tableTo": "credit_cards",
           "columnsFrom": [
             "card_id"
           ],
+          "tableTo": "credit_cards",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "invoices_card_month_uq": {
+          "name": "invoices_card_month_uq",
+          "columns": [
+            "card_id",
+            "reference_month"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
       "checkConstraints": {
         "invoices_status": {
           "name": "invoices_status",
@@ -1377,95 +2092,218 @@
         },
         "invoices_month_fmt": {
           "name": "invoices_month_fmt",
-          "value": "\"invoices\".\"reference_month\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]'"
+          "value": "\"invoices\".\"reference_month\" ~ '^[0-9]{4}-[0-1][0-9]$'"
         },
         "invoices_dates": {
           "name": "invoices_dates",
           "value": "\"invoices\".\"closing_date\" <= \"invoices\".\"due_date\""
         }
-      }
+      },
+      "isRLSEnabled": false
     },
-    "box_transactions": {
-      "name": "box_transactions",
+    "public.merchant_rules": {
+      "name": "merchant_rules",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "identity": {
+            "name": "merchant_rules_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
         },
-        "box_id": {
-          "name": "box_id",
+        "user_id": {
+          "name": "user_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
-        "type": {
-          "name": "type",
+        "merchant_key": {
+          "name": "merchant_key",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
-        "amount_cents": {
-          "name": "amount_cents",
+        "category_id": {
+          "name": "category_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "date": {
-          "name": "date",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "notes": {
-          "name": "notes",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "merchant_rules_user_id_users_id_fk": {
+          "name": "merchant_rules_user_id_users_id_fk",
+          "tableFrom": "merchant_rules",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "users",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "merchant_rules_category_id_categories_id_fk": {
+          "name": "merchant_rules_category_id_categories_id_fk",
+          "tableFrom": "merchant_rules",
+          "columnsFrom": [
+            "category_id"
+          ],
+          "tableTo": "categories",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "merchant_rules_user_key_uq": {
+          "name": "merchant_rules_user_key_uq",
+          "columns": [
+            "user_id",
+            "merchant_key"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "merchant_rules_key_nonempty": {
+          "name": "merchant_rules_key_nonempty",
+          "value": "length(\"merchant_rules\".\"merchant_key\") > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.box_transactions": {
+      "name": "box_transactions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "name": "box_transactions_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
+        },
+        "box_id": {
+          "name": "box_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         }
       },
       "indexes": {
         "box_transactions_box_date_idx": {
           "name": "box_transactions_box_date_idx",
           "columns": [
-            "box_id",
-            "date"
+            {
+              "expression": "box_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "box_transactions_box_id_savings_boxes_id_fk": {
           "name": "box_transactions_box_id_savings_boxes_id_fk",
           "tableFrom": "box_transactions",
-          "tableTo": "savings_boxes",
           "columnsFrom": [
             "box_id"
           ],
+          "tableTo": "savings_boxes",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
       "checkConstraints": {
         "box_tx_type": {
           "name": "box_tx_type",
@@ -1477,119 +2315,164 @@
         },
         "box_tx_date_fmt": {
           "name": "box_tx_date_fmt",
-          "value": "\"box_transactions\".\"date\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'"
+          "value": "\"box_transactions\".\"date\" ~ '^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'"
         }
-      }
+      },
+      "isRLSEnabled": false
     },
-    "savings_boxes": {
+    "public.savings_boxes": {
       "name": "savings_boxes",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "identity": {
+            "name": "savings_boxes_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         },
         "institution_id": {
           "name": "institution_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "cdi_percent_bp": {
           "name": "cdi_percent_bp",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "goal_cents": {
           "name": "goal_cents",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "goal_date": {
           "name": "goal_date",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "color": {
           "name": "color",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "icon": {
           "name": "icon",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "archived_at": {
           "name": "archived_at",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         }
       },
       "indexes": {
         "savings_boxes_institution_idx": {
           "name": "savings_boxes_institution_idx",
           "columns": [
-            "institution_id"
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "savings_boxes_user_idx": {
+          "name": "savings_boxes_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
-        "savings_boxes_institution_id_institutions_id_fk": {
-          "name": "savings_boxes_institution_id_institutions_id_fk",
+        "savings_boxes_user_id_users_id_fk": {
+          "name": "savings_boxes_user_id_users_id_fk",
           "tableFrom": "savings_boxes",
-          "tableTo": "institutions",
           "columnsFrom": [
-            "institution_id"
+            "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "savings_boxes_institution_id_institutions_id_fk": {
+          "name": "savings_boxes_institution_id_institutions_id_fk",
+          "tableFrom": "savings_boxes",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "tableTo": "institutions",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
       "checkConstraints": {
         "boxes_cdi_percent": {
           "name": "boxes_cdi_percent",
@@ -1601,83 +2484,101 @@
         },
         "boxes_goal_date_fmt": {
           "name": "boxes_goal_date_fmt",
-          "value": "\"savings_boxes\".\"goal_date\" IS NULL OR \"savings_boxes\".\"goal_date\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'"
+          "value": "\"savings_boxes\".\"goal_date\" IS NULL OR \"savings_boxes\".\"goal_date\" ~ '^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'"
         }
-      }
+      },
+      "isRLSEnabled": false
     },
-    "simulation_installments": {
+    "public.simulation_installments": {
       "name": "simulation_installments",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "identity": {
+            "name": "simulation_installments_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
         },
         "simulation_id": {
           "name": "simulation_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "number": {
           "name": "number",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "reference_month": {
           "name": "reference_month",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "amount_cents": {
           "name": "amount_cents",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         }
       },
       "indexes": {
         "sim_installments_month_idx": {
           "name": "sim_installments_month_idx",
           "columns": [
-            "reference_month"
+            {
+              "expression": "reference_month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
-        },
-        "sim_installments_number_uq": {
-          "name": "sim_installments_number_uq",
-          "columns": [
-            "simulation_id",
-            "number"
-          ],
-          "isUnique": true
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "simulation_installments_simulation_id_simulations_id_fk": {
           "name": "simulation_installments_simulation_id_simulations_id_fk",
           "tableFrom": "simulation_installments",
-          "tableTo": "simulations",
           "columnsFrom": [
             "simulation_id"
           ],
+          "tableTo": "simulations",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "sim_installments_number_uq": {
+          "name": "sim_installments_number_uq",
+          "columns": [
+            "simulation_id",
+            "number"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
       "checkConstraints": {
         "sim_installments_number_positive": {
           "name": "sim_installments_number_positive",
@@ -1689,149 +2590,183 @@
         },
         "sim_installments_month_fmt": {
           "name": "sim_installments_month_fmt",
-          "value": "\"simulation_installments\".\"reference_month\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]'"
+          "value": "\"simulation_installments\".\"reference_month\" ~ '^[0-9]{4}-[0-1][0-9]$'"
         }
-      }
+      },
+      "isRLSEnabled": false
     },
-    "simulations": {
+    "public.simulations": {
       "name": "simulations",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "identity": {
+            "name": "simulations_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         },
         "description": {
           "name": "description",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "payment_method": {
           "name": "payment_method",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "card_id": {
           "name": "card_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "category_id": {
           "name": "category_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "total_cents": {
           "name": "total_cents",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "installments_count": {
           "name": "installments_count",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 1
         },
         "purchase_date": {
           "name": "purchase_date",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "status": {
           "name": "status",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": "'active'"
         },
         "is_visible": {
           "name": "is_visible",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": true
         },
         "effectivated_at": {
           "name": "effectivated_at",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         }
       },
       "indexes": {
-        "simulations_status_idx": {
-          "name": "simulations_status_idx",
+        "simulations_user_status_idx": {
+          "name": "simulations_user_status_idx",
           "columns": [
-            "status"
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
-        "simulations_card_id_credit_cards_id_fk": {
-          "name": "simulations_card_id_credit_cards_id_fk",
+        "simulations_user_id_users_id_fk": {
+          "name": "simulations_user_id_users_id_fk",
           "tableFrom": "simulations",
-          "tableTo": "credit_cards",
           "columnsFrom": [
-            "card_id"
+            "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "simulations_card_id_credit_cards_id_fk": {
+          "name": "simulations_card_id_credit_cards_id_fk",
+          "tableFrom": "simulations",
+          "columnsFrom": [
+            "card_id"
+          ],
+          "tableTo": "credit_cards",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "simulations_category_id_categories_id_fk": {
           "name": "simulations_category_id_categories_id_fk",
           "tableFrom": "simulations",
-          "tableTo": "categories",
           "columnsFrom": [
             "category_id"
           ],
+          "tableTo": "categories",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "set null"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
       "checkConstraints": {
         "simulations_method": {
           "name": "simulations_method",
@@ -1851,76 +2786,147 @@
         },
         "simulations_date_fmt": {
           "name": "simulations_date_fmt",
-          "value": "\"simulations\".\"purchase_date\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'"
+          "value": "\"simulations\".\"purchase_date\" ~ '^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'"
         },
         "simulations_effectivated": {
           "name": "simulations_effectivated",
           "value": "(\"simulations\".\"status\" = 'effectivated') = (\"simulations\".\"effectivated_at\" IS NOT NULL)"
         }
-      }
+      },
+      "isRLSEnabled": false
     },
-    "monthly_settlements": {
+    "public.monthly_settlements": {
       "name": "monthly_settlements",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "identity": {
+            "name": "monthly_settlements_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public",
+            "type": "byDefault"
+          }
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         },
         "income_id": {
           "name": "income_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "expense_id": {
           "name": "expense_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "month": {
           "name": "month",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "amount_cents": {
           "name": "amount_cents",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "settled_at": {
           "name": "settled_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+          "default": "(to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))"
         }
       },
       "indexes": {
-        "settlements_month_idx": {
-          "name": "settlements_month_idx",
+        "settlements_user_month_idx": {
+          "name": "settlements_user_month_idx",
           "columns": [
-            "month"
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "monthly_settlements_user_id_users_id_fk": {
+          "name": "monthly_settlements_user_id_users_id_fk",
+          "tableFrom": "monthly_settlements",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "users",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
+        "monthly_settlements_income_id_income_sources_id_fk": {
+          "name": "monthly_settlements_income_id_income_sources_id_fk",
+          "tableFrom": "monthly_settlements",
+          "columnsFrom": [
+            "income_id"
+          ],
+          "tableTo": "income_sources",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "monthly_settlements_expense_id_recurring_expenses_id_fk": {
+          "name": "monthly_settlements_expense_id_recurring_expenses_id_fk",
+          "tableFrom": "monthly_settlements",
+          "columnsFrom": [
+            "expense_id"
+          ],
+          "tableTo": "recurring_expenses",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
         "settlements_income_month_uq": {
           "name": "settlements_income_month_uq",
           "columns": [
             "income_id",
             "month"
           ],
-          "isUnique": true
+          "nullsNotDistinct": false
         },
         "settlements_expense_month_uq": {
           "name": "settlements_expense_month_uq",
@@ -1928,39 +2934,10 @@
             "expense_id",
             "month"
           ],
-          "isUnique": true
+          "nullsNotDistinct": false
         }
       },
-      "foreignKeys": {
-        "monthly_settlements_income_id_income_sources_id_fk": {
-          "name": "monthly_settlements_income_id_income_sources_id_fk",
-          "tableFrom": "monthly_settlements",
-          "tableTo": "income_sources",
-          "columnsFrom": [
-            "income_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "monthly_settlements_expense_id_recurring_expenses_id_fk": {
-          "name": "monthly_settlements_expense_id_recurring_expenses_id_fk",
-          "tableFrom": "monthly_settlements",
-          "tableTo": "recurring_expenses",
-          "columnsFrom": [
-            "expense_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "policies": {},
       "checkConstraints": {
         "settlements_exactly_one_source": {
           "name": "settlements_exactly_one_source",
@@ -1972,19 +2949,21 @@
         },
         "settlements_month_fmt": {
           "name": "settlements_month_fmt",
-          "value": "\"monthly_settlements\".\"month\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]'"
+          "value": "\"monthly_settlements\".\"month\" ~ '^[0-9]{4}-[0-1][0-9]$'"
         }
-      }
+      },
+      "isRLSEnabled": false
     }
   },
-  "views": {},
   "enums": {},
+  "schemas": {},
+  "views": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
   "_meta": {
+    "columns": {},
     "schemas": {},
-    "tables": {},
-    "columns": {}
-  },
-  "internal": {
-    "indexes": {}
+    "tables": {}
   }
 }

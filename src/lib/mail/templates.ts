@@ -8,12 +8,12 @@ const COPY: Record<CodePurpose, { title: string; lead: string; warn: string; sub
     title: "Seu código de verificação",
     lead: "Use o código abaixo para concluir seu login.",
     warn: "Se não foi você que tentou entrar, troque sua senha — alguém pode conhecê-la.",
-    subject: (c) => `${c} é seu código do Local Finance`,
+    subject: (c) => `${c} é seu código do BeaconFinance`,
   },
   signup: {
     title: "Confirme seu e-mail",
-    lead: "Bem-vindo(a) ao Local Finance! Use o código abaixo para confirmar seu e-mail e ativar sua conta.",
-    warn: "Se você não criou uma conta no Local Finance, ignore este e-mail.",
+    lead: "Bem-vindo(a) ao BeaconFinance! Use o código abaixo para confirmar seu e-mail e ativar sua conta.",
+    warn: "Se você não criou uma conta no BeaconFinance, ignore este e-mail.",
     subject: (c) => `${c} é o código para confirmar seu e-mail`,
   },
   reset: {
@@ -51,7 +51,7 @@ export function codeEmail({
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center">
     <table role="presentation" width="100%" style="max-width:440px;background:#ffffff;border:1px solid #e4e4ed;border-radius:16px;padding:32px" cellspacing="0" cellpadding="0">
       <tr><td>
-        <div style="display:inline-block;background:#7c3aed;color:#fff;border-radius:10px;padding:8px 12px;font-weight:600;font-size:14px">Local Finance</div>
+        <div style="display:inline-block;background:#7c3aed;color:#fff;border-radius:10px;padding:8px 12px;font-weight:600;font-size:14px">BeaconFinance</div>
         <h1 style="font-size:20px;margin:24px 0 8px">${copy.title}</h1>
         <p style="margin:0 0 24px;color:#5b5a66;font-size:14px;line-height:1.5">Olá, ${firstName}! ${copy.lead}</p>
         <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto 24px"><tr>${digits}</tr></table>

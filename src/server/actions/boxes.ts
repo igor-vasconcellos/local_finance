@@ -13,9 +13,9 @@ export async function saveBoxAction(_prev: ActionState, fd: FormData): Promise<A
   if (!parsed.success) return invalid(parsed.error);
   const id = parseId(fd.get("id"));
   if (id) {
-    if (!updateBox(uid, id, parsed.data)) return { error: "Caixinha não encontrada." };
+    if (!(await updateBox(uid, id, parsed.data))) return { error: "Caixinha não encontrada." };
   } else {
-    createBox(uid, parsed.data);
+    await createBox(uid, parsed.data);
   }
   refresh();
   return { ok: true };
@@ -24,7 +24,7 @@ export async function saveBoxAction(_prev: ActionState, fd: FormData): Promise<A
 export async function deleteBoxAction(fd: FormData): Promise<void> {
   const uid = await requireUserId();
   const id = parseId(fd.get("id"));
-  if (id) deleteBox(uid, id);
+  if (id) await deleteBox(uid, id);
   redirect("/caixinhas");
 }
 
@@ -32,7 +32,7 @@ export async function addBoxTxAction(_prev: ActionState, fd: FormData): Promise<
   const uid = await requireUserId();
   const parsed = boxTxSchema.safeParse(formObject(fd));
   if (!parsed.success) return invalid(parsed.error);
-  const result = addBoxTransaction(uid, parsed.data);
+  const result = await addBoxTransaction(uid, parsed.data);
   if (!result.ok) return { error: result.error };
   refresh();
   return { ok: true };
@@ -42,7 +42,7 @@ export async function deleteBoxTxAction(fd: FormData): Promise<{ error?: string 
   const uid = await requireUserId();
   const id = parseId(fd.get("id"));
   if (!id) return { error: "Movimentação inválida." };
-  const result = deleteBoxTransaction(uid, id);
+  const result = await deleteBoxTransaction(uid, id);
   if (!result.ok) return { error: result.error };
   refresh();
   return {};

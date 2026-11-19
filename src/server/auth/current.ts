@@ -40,7 +40,11 @@ export async function getSessionJwt() {
 }
 
 export async function setSessionCookie(jwt: string, expiresAt: Date) {
-  (await cookies()).set(SESSION_COOKIE, jwt, { ...baseCookie, sameSite: "lax", expires: expiresAt });
+  (await cookies()).set(SESSION_COOKIE, jwt, {
+    ...baseCookie,
+    sameSite: "lax",
+    expires: expiresAt,
+  });
 }
 
 export async function clearSessionCookie() {

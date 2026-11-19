@@ -1,8 +1,19 @@
 import "./_load-env";
-import { env } from "@/env";
-import { db, sqlite } from "@/db/client";
 import { runMigrations } from "@/db/migrate";
 
-runMigrations(sqlite, db, "./drizzle");
-console.log(`✅ Migrações aplicadas em ${env.DATABASE_PATH}`);
-sqlite.close();
+async function main() {
+  // Pooler do Supabase: a porta 5432 do mesmo host é o modo sessão (melhor para migrações).
+  const pooled = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  const session = pooled?.includes(".pooler.supabase.com:6543") ? pooled.replace(":6543", ":5432") : undefined;
+  const url = process.env.DIRECT_URL || session || pooled;
+  if (!url) throw new Error("Defina DIRECT_URL ou DATABASE_URL (ou POSTGRES_URL, da integração Vercel ↔ Supabase).");
+  await runMigrations(url);
+  console.log("✅ Migrações aplicadas.");
+}
+
+main().catch((error) => {
+  const cause = (error as { cause?: { message?: string; code?: string } }).cause;
+  console.error("❌", error instanceof Error ? error.message : error);
+  if (cause) console.error("   Motivo:", cause.code ?? "", cause.message ?? cause);
+  process.exit(1);
+});

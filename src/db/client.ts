@@ -1,33 +1,46 @@
-import fs from "node:fs";
-import path from "node:path";
-import Database from "better-sqlite3";
-import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import { drizzle } from "drizzle-orm/postgres-js";
+import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
+import postgres from "postgres";
 import { env } from "@/env";
 import * as schema from "./schema";
 
-export type DB = BetterSQLite3Database<typeof schema>;
+/**
+ * Postgres (Supabase). Na Vercel cada função abre poucas conexões de vida curta, por
+ * isso usamos o pooler do Supabase em modo transação (porta 6543), que NÃO aceita
+ * prepared statements: `prepare: false`.
+ * Os testes trocam este módulo por um Postgres em memória (PGlite).
+ */
+export type DB = PgDatabase<PgQueryResultHKT, typeof schema>;
+/** Transação aberta por db.transaction(async (tx) => …). */
+export type Tx = Parameters<Parameters<DB["transaction"]>[0]>[0];
 
-/** Abre o arquivo SQLite com os pragmas recomendados para uso local. */
-export function openSqlite(filePath: string = env.DATABASE_PATH): Database.Database {
-  const inMemory = filePath === ":memory:"; // usado pelos testes
-  // Caminho vem do .env em tempo de execução; o bundler não deve tentar rastreá-lo.
-  const resolved = inMemory
-    ? filePath
-    : path.resolve(/*turbopackIgnore: true*/ process.cwd(), filePath);
-  if (!inMemory) fs.mkdirSync(path.dirname(resolved), { recursive: true });
+const globalForDb = globalThis as unknown as {
+  __pg?: ReturnType<typeof postgres>;
+};
 
-  const sqlite = new Database(resolved);
-  if (!inMemory) sqlite.pragma("journal_mode = WAL"); // leituras e escritas concorrentes sem travar
-  sqlite.pragma("synchronous = NORMAL"); // seguro com WAL e bem mais rápido
-  sqlite.pragma("foreign_keys = ON"); // SQLite vem com FKs desligadas por padrão!
-  sqlite.pragma("busy_timeout = 5000");
-  return sqlite;
+/**
+ * Remove da URL parâmetros que não são do Postgres (a integração da Vercel acrescenta
+ * coisas como "supa=base-pooler.x"; o driver repassaria isso ao servidor e daria erro).
+ */
+export function cleanDatabaseUrl(raw: string): string {
+  const url = new URL(raw);
+  for (const key of [...url.searchParams.keys()]) {
+    if (key !== "sslmode") url.searchParams.delete(key);
+  }
+  return url.toString();
+}
+
+function connect() {
+  return postgres(cleanDatabaseUrl(env.DATABASE_URL), {
+    prepare: false,
+    max: env.DATABASE_POOL_MAX,
+    idle_timeout: 20,
+    connect_timeout: 10,
+  });
 }
 
 // Em dev o Next recarrega módulos a cada alteração; reaproveitamos a mesma conexão.
-const globalForDb = globalThis as unknown as { __sqlite?: Database.Database };
+const client = globalForDb.__pg ?? connect();
+if (env.NODE_ENV !== "production") globalForDb.__pg = client;
 
-export const sqlite = globalForDb.__sqlite ?? openSqlite();
-if (env.NODE_ENV !== "production") globalForDb.__sqlite = sqlite;
-
-export const db: DB = drizzle(sqlite, { schema });
+export const db: DB = drizzle(client, { schema });

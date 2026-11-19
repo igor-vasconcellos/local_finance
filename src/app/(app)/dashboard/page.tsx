@@ -28,7 +28,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   const view: DashboardView = params.visao === "semestral" || params.visao === "anual" ? params.visao : "mensal";
   const start = typeof params.mes === "string" && MONTH_RE.test(params.mes) ? params.mes : current;
   const state: DashboardState = { view, start, current, sim: params.sim === "1" };
-  const simCount = listSimulations(uid).filter((s) => s.status === "active" && s.isVisible).length;
+  const simCount = (await listSimulations(uid)).filter((s) => s.status === "active" && s.isVisible).length;
 
   const description =
     view === "mensal"

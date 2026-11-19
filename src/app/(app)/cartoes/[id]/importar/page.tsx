@@ -10,14 +10,14 @@ export const metadata: Metadata = { title: "Importar fatura" };
 export default async function ImportPage({ params }: PageProps<"/cartoes/[id]/importar">) {
   const uid = await requireUserId();
   const id = Number((await params).id);
-  const row = Number.isInteger(id) ? getCard(uid, id) : undefined;
+  const row = Number.isInteger(id) ? await getCard(uid, id) : undefined;
   if (!row) notFound();
   const { card } = row;
 
   return (
     <ImportWizard
       card={{ id: card.id, name: card.name, closingDay: card.closingDay, dueDay: card.dueDay }}
-      categories={listCategories(uid, "expense")}
+      categories={await listCategories(uid, "expense")}
     />
   );
 }

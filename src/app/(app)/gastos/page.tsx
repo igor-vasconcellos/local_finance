@@ -14,8 +14,8 @@ export const metadata: Metadata = { title: "Gastos fixos" };
 
 export default async function ExpensesPage() {
   const uid = await requireUserId();
-  const expenses = listExpenses(uid);
-  const categories = listCategories(uid, "expense");
+  const expenses = await listExpenses(uid);
+  const categories = await listCategories(uid, "expense");
   const month = currentMonth();
 
   const active = expenses.filter((e) => expenseAppliesTo(e, month));
@@ -49,14 +49,20 @@ export default async function ExpensesPage() {
         />
         <StatCard
           label="Próximo vencimento"
-          value={next ? (nextThisMonth ? `Dia ${next.dueDay}` : `${next.dueDay} de ${formatMonthShort(nextMonth).split("/")[0]}`) : "—"}
+          value={
+            next ? (nextThisMonth ? `Dia ${next.dueDay}` : `${next.dueDay} de ${formatMonthShort(nextMonth).split("/")[0]}`) : "—"
+          }
           hint={next ? `${next.name} · ${formatBRL(next.amountCents)}` : "Nenhum gasto ativo"}
           icon={<CalendarDays />}
         />
         <StatCard
           label="Maior categoria"
           value={byCategory[0]?.name ?? "—"}
-          hint={byCategory[0] ? `${formatBRL(byCategory[0].cents)} · ${Math.round((byCategory[0].cents / total) * 100)}% do total` : undefined}
+          hint={
+            byCategory[0]
+              ? `${formatBRL(byCategory[0].cents)} · ${Math.round((byCategory[0].cents / total) * 100)}% do total`
+              : undefined
+          }
           icon={<Tags />}
           tone="primary"
         />
@@ -75,13 +81,20 @@ export default async function ExpensesPage() {
                   <li key={c.name} className="grid gap-1.5">
                     <div className="flex items-center justify-between gap-2 text-sm">
                       <span className="flex items-center gap-2">
-                        <span className="size-2 rounded-full" style={{ background: c.color ?? "var(--muted-foreground)" }} aria-hidden />
+                        <span
+                          className="size-2 rounded-full"
+                          style={{ background: c.color ?? "var(--muted-foreground)" }}
+                          aria-hidden
+                        />
                         {c.name}
                       </span>
                       <span className="tabular-nums text-muted-foreground">{formatBRL(c.cents)}</span>
                     </div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-muted" role="presentation">
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: c.color ?? "var(--primary)" }} />
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${pct}%`, background: c.color ?? "var(--primary)" }}
+                      />
                     </div>
                   </li>
                 );
@@ -91,7 +104,7 @@ export default async function ExpensesPage() {
         )}
       </div>
 
-      <OneTimeList items={listOneTimeExpenses(uid)} />
+      <OneTimeList items={await listOneTimeExpenses(uid)} />
     </>
   );
 }

@@ -1,11 +1,11 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
+import { boolean, check, index, integer, pgTable, text, unique } from "drizzle-orm/pg-core";
 import { createdAt, DATE_GLOB, id, MONTH_GLOB, timestamps } from "./_helpers";
 import { users } from "./auth";
 import { simulations } from "./simulations";
 
 /** Categorias para rendas e despesas (ícone = nome de ícone Lucide). */
-export const categories = sqliteTable(
+export const categories = pgTable(
   "categories",
   {
     id: id(),
@@ -26,7 +26,7 @@ export const categories = sqliteTable(
 );
 
 /** Instituições financeiras (compartilhadas por cartões e caixinhas). */
-export const institutions = sqliteTable(
+export const institutions = pgTable(
   "institutions",
   {
     id: id(),
@@ -41,7 +41,7 @@ export const institutions = sqliteTable(
 );
 
 /** MÓDULO 2 — Fontes de renda (mensais recorrentes ou únicas). */
-export const incomeSources = sqliteTable(
+export const incomeSources = pgTable(
   "income_sources",
   {
     id: id(),
@@ -57,7 +57,7 @@ export const incomeSources = sqliteTable(
     startMonth: text("start_month").notNull(),
     endMonth: text("end_month"), // NULL = sem data de término
     categoryId: integer("category_id").references(() => categories.id, { onDelete: "set null" }),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    active: boolean("active").notNull().default(true),
     notes: text("notes"),
     ...timestamps(),
   },
@@ -70,18 +70,18 @@ export const incomeSources = sqliteTable(
       "income_recurrence_fields",
       // IS NOT NULL explícito: em SQL, NULL BETWEEN… resulta NULL e um CHECK NULL é aceito.
       sql`(${t.recurrence} = 'monthly' AND ${t.payDay} IS NOT NULL AND ${t.payDay} BETWEEN 1 AND 31)
-       OR (${t.recurrence} = 'once' AND ${t.payDate} IS NOT NULL AND ${t.payDate} GLOB '${sql.raw(DATE_GLOB)}')`,
+       OR (${t.recurrence} = 'once' AND ${t.payDate} IS NOT NULL AND ${t.payDate} ~ '${sql.raw(DATE_GLOB)}')`,
     ),
-    check("income_start_month_fmt", sql`${t.startMonth} GLOB '${sql.raw(MONTH_GLOB)}'`),
+    check("income_start_month_fmt", sql`${t.startMonth} ~ '${sql.raw(MONTH_GLOB)}'`),
     check(
       "income_end_month",
-      sql`${t.endMonth} IS NULL OR (${t.endMonth} GLOB '${sql.raw(MONTH_GLOB)}' AND ${t.endMonth} >= ${t.startMonth})`,
+      sql`${t.endMonth} IS NULL OR (${t.endMonth} ~ '${sql.raw(MONTH_GLOB)}' AND ${t.endMonth} >= ${t.startMonth})`,
     ),
   ],
 );
 
 /** MÓDULO 2 — Gastos fixos mensais (aluguel, luz, internet, assinaturas…). */
-export const recurringExpenses = sqliteTable(
+export const recurringExpenses = pgTable(
   "recurring_expenses",
   {
     id: id(),
@@ -96,7 +96,7 @@ export const recurringExpenses = sqliteTable(
     dueDay: integer("due_day").notNull(),
     startMonth: text("start_month").notNull(),
     endMonth: text("end_month"),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    active: boolean("active").notNull().default(true),
     notes: text("notes"),
     ...timestamps(),
   },
@@ -105,10 +105,10 @@ export const recurringExpenses = sqliteTable(
     index("recurring_expenses_user_idx").on(t.userId),
     check("recurring_amount_positive", sql`${t.amountCents} > 0`),
     check("recurring_due_day", sql`${t.dueDay} BETWEEN 1 AND 31`),
-    check("recurring_start_month_fmt", sql`${t.startMonth} GLOB '${sql.raw(MONTH_GLOB)}'`),
+    check("recurring_start_month_fmt", sql`${t.startMonth} ~ '${sql.raw(MONTH_GLOB)}'`),
     check(
       "recurring_end_month",
-      sql`${t.endMonth} IS NULL OR (${t.endMonth} GLOB '${sql.raw(MONTH_GLOB)}' AND ${t.endMonth} >= ${t.startMonth})`,
+      sql`${t.endMonth} IS NULL OR (${t.endMonth} ~ '${sql.raw(MONTH_GLOB)}' AND ${t.endMonth} >= ${t.startMonth})`,
     ),
   ],
 );
@@ -117,7 +117,7 @@ export const recurringExpenses = sqliteTable(
  * Gastos avulsos pagos no débito / Pix / dinheiro (saem integralmente na data).
  * Também é o destino de uma simulação de débito quando ela é efetivada.
  */
-export const oneTimeExpenses = sqliteTable(
+export const oneTimeExpenses = pgTable(
   "one_time_expenses",
   {
     id: id(),
@@ -137,6 +137,6 @@ export const oneTimeExpenses = sqliteTable(
   (t) => [
     index("one_time_expenses_user_date_idx").on(t.userId, t.date),
     check("one_time_amount_positive", sql`${t.amountCents} > 0`),
-    check("one_time_date_fmt", sql`${t.date} GLOB '${sql.raw(DATE_GLOB)}'`),
+    check("one_time_date_fmt", sql`${t.date} ~ '${sql.raw(DATE_GLOB)}'`),
   ],
 );

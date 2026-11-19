@@ -24,9 +24,9 @@ export async function saveCardAction(_prev: ActionState, fd: FormData): Promise<
 
   const id = parseId(fd.get("id"));
   if (id) {
-    if (!updateCard(uid, id, parsed.data)) return { error: "Cartão não encontrado." };
+    if (!(await updateCard(uid, id, parsed.data))) return { error: "Cartão não encontrado." };
   } else {
-    createCard(uid, parsed.data);
+    await createCard(uid, parsed.data);
   }
   refresh();
   return { ok: true };
@@ -35,14 +35,14 @@ export async function saveCardAction(_prev: ActionState, fd: FormData): Promise<
 export async function toggleCardAction(fd: FormData): Promise<void> {
   const uid = await requireUserId();
   const id = parseId(fd.get("id"));
-  if (id) setCardActive(uid, id, fd.get("active") === "true");
+  if (id) await setCardActive(uid, id, fd.get("active") === "true");
   refresh();
 }
 
 export async function deleteCardAction(fd: FormData): Promise<void> {
   const uid = await requireUserId();
   const id = parseId(fd.get("id"));
-  if (id) deleteCard(uid, id);
+  if (id) await deleteCard(uid, id);
   redirect("/cartoes");
 }
 
@@ -54,9 +54,9 @@ export async function savePurchaseAction(_prev: ActionState, fd: FormData): Prom
   const id = parseId(fd.get("id"));
   try {
     if (id) {
-      if (!updatePurchase(uid, id, parsed.data)) return { error: "Compra não encontrada." };
+      if (!(await updatePurchase(uid, id, parsed.data))) return { error: "Compra não encontrada." };
     } else {
-      createPurchase(uid, parsed.data);
+      await createPurchase(uid, parsed.data);
     }
   } catch (error) {
     if (error instanceof NotFoundError) return { error: error.message };
@@ -70,7 +70,7 @@ export async function savePurchaseAction(_prev: ActionState, fd: FormData): Prom
 export async function deletePurchaseAction(fd: FormData): Promise<void> {
   const uid = await requireUserId();
   const id = parseId(fd.get("id"));
-  if (id) deletePurchase(uid, id);
+  if (id) await deletePurchase(uid, id);
   refresh();
 }
 
@@ -78,6 +78,6 @@ export async function setInvoicePaidAction(fd: FormData): Promise<void> {
   const uid = await requireUserId();
   const cardId = parseId(fd.get("cardId"));
   const month = String(fd.get("month") ?? "");
-  if (cardId && /^\d{4}-\d{2}$/.test(month)) setInvoicePaid(uid, cardId, month, fd.get("paid") === "true");
+  if (cardId && /^\d{4}-\d{2}$/.test(month)) await setInvoicePaid(uid, cardId, month, fd.get("paid") === "true");
   refresh();
 }

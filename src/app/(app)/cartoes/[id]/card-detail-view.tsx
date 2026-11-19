@@ -30,18 +30,13 @@ import { Card } from "@/components/ui/page";
 import { formatDate, formatDayMonth, formatMonthLong, formatMonthShort, type ISODate, type Month } from "@/lib/dates";
 import { formatBRL } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import {
-  deleteCardAction,
-  deletePurchaseAction,
-  setInvoicePaidAction,
-  toggleCardAction,
-} from "@/server/actions/cards";
+import { deleteCardAction, deletePurchaseAction, setInvoicePaidAction, toggleCardAction } from "@/server/actions/cards";
 import { deleteCreditAction, undoImportAction } from "@/server/actions/imports";
 import type { getInvoiceDetail, PurchaseRow } from "@/server/finance/cards";
 import type { ImportHistoryRow } from "@/server/import/service";
 import type { CategoryOption } from "@/server/finance/categories";
 
-type Invoice = NonNullable<ReturnType<typeof getInvoiceDetail>>;
+type Invoice = NonNullable<Awaited<ReturnType<typeof getInvoiceDetail>>>;
 type CardData = {
   id: number;
   name: string;
@@ -56,11 +51,7 @@ type CardData = {
 type Tab = { referenceMonth: Month; totalCents: number; isCurrent: boolean };
 type CardOption = { id: number; name: string; closingDay: number; dueDay: number };
 
-type DialogState =
-  | { kind: "editCard" }
-  | { kind: "newPurchase" }
-  | { kind: "editPurchase"; purchase: PurchaseRow }
-  | null;
+type DialogState = { kind: "editCard" } | { kind: "newPurchase" } | { kind: "editPurchase"; purchase: PurchaseRow } | null;
 
 export function CardDetailView({
   card,
@@ -246,7 +237,9 @@ export function CardDetailView({
           <ul className="divide-y">
             {invoice.items.map((it) => (
               <li key={it.installmentId} className="flex items-center gap-4 px-5 py-3">
-                <span className="w-12 shrink-0 text-xs text-muted-foreground tabular-nums">{formatDayMonth(it.purchaseDate)}</span>
+                <span className="w-12 shrink-0 text-xs text-muted-foreground tabular-nums">
+                  {formatDayMonth(it.purchaseDate)}
+                </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{it.description}</p>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
@@ -286,7 +279,9 @@ export function CardDetailView({
         )}
         {invoice.creditsCents > 0 && (
           <div className="flex justify-between border-t px-5 py-3 text-sm text-muted-foreground">
-            <span>Compras {formatBRL(invoice.chargesCents)} − créditos {formatBRL(invoice.creditsCents)}</span>
+            <span>
+              Compras {formatBRL(invoice.chargesCents)} − créditos {formatBRL(invoice.creditsCents)}
+            </span>
             <span className="font-semibold text-foreground tabular-nums">{formatBRL(invoice.totalCents)}</span>
           </div>
         )}
@@ -315,11 +310,7 @@ export function CardDetailView({
                 <div className="min-w-0 flex-1 basis-full sm:basis-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="truncate font-medium">{p.description}</p>
-                    {p.installmentsCount > 1 ? (
-                      <Badge tone="primary">{p.installmentsCount}x</Badge>
-                    ) : (
-                      <Badge>À vista</Badge>
-                    )}
+                    {p.installmentsCount > 1 ? <Badge tone="primary">{p.installmentsCount}x</Badge> : <Badge>À vista</Badge>}
                     {p.remainingCount === 0 && <Badge tone="success">Quitada</Badge>}
                     {p.importId && <Badge>Importada</Badge>}
                   </div>
@@ -380,7 +371,8 @@ export function CardDetailView({
                     Fatura de {formatMonthShort(imp.referenceMonth)}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {imp.fileName} · {formatDate(imp.createdAt.slice(0, 10))} · {imp.purchasesCount} compra{imp.purchasesCount === 1 ? "" : "s"}
+                    {imp.fileName} · {formatDate(imp.createdAt.slice(0, 10))} · {imp.purchasesCount} compra
+                    {imp.purchasesCount === 1 ? "" : "s"}
                     {imp.creditsCount > 0 && ` · ${imp.creditsCount} crédito${imp.creditsCount === 1 ? "" : "s"}`}
                   </p>
                 </div>
@@ -406,7 +398,9 @@ export function CardDetailView({
       <Dialog
         open={dialog !== null}
         onClose={close}
-        title={dialog?.kind === "editCard" ? "Editar cartão" : dialog?.kind === "editPurchase" ? "Editar compra" : "Lançar compra"}
+        title={
+          dialog?.kind === "editCard" ? "Editar cartão" : dialog?.kind === "editPurchase" ? "Editar compra" : "Lançar compra"
+        }
         description={
           dialog?.kind === "newPurchase"
             ? "As parcelas são distribuídas automaticamente nas faturas dos próximos meses."
@@ -416,11 +410,7 @@ export function CardDetailView({
         }
       >
         {dialog?.kind === "editCard" && (
-          <CardForm
-            card={{ ...card, hasPurchases: purchases.length > 0 }}
-            institutions={institutions}
-            onDone={close}
-          />
+          <CardForm card={{ ...card, hasPurchases: purchases.length > 0 }} institutions={institutions} onDone={close} />
         )}
         {(dialog?.kind === "newPurchase" || dialog?.kind === "editPurchase") && (
           <PurchaseForm
