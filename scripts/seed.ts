@@ -1,59 +1,15 @@
 /**
- * Dados iniciais (idempotente — pode rodar quantas vezes quiser):
- * - linha única de configurações (limites do farol)
- * - taxa CDI inicial
- * - categorias padrão de renda e despesa
+ * Garante os dados iniciais (configurações, taxa CDI e categorias padrão) de todas as
+ * contas. Idempotente. Contas novas já recebem esses dados ao confirmar o cadastro.
  */
 import "./_load-env";
 import { db, sqlite } from "@/db/client";
-import { categories, cdiRates, settings } from "@/db/schema";
+import { seedUserDefaults } from "@/db/defaults";
+import { users } from "@/db/schema";
 
-// CDI de referência (Selic 13,75% mantida pelo Copom em 04/11/2026 → CDI ≈ 13,65% a.a.).
-// Ajustável depois em Configurações; novas taxas valem a partir da data informada.
-const INITIAL_CDI = { annualRateBp: 1365, effectiveFrom: "2026-11-05" };
-
-const INCOME_CATEGORIES = [
-  { name: "Salário", icon: "briefcase", color: "#10b981" },
-  { name: "Pró-labore", icon: "building-2", color: "#14b8a6" },
-  { name: "Freelance", icon: "laptop", color: "#06b6d4" },
-  { name: "Rendimentos", icon: "trending-up", color: "#22c55e" },
-  { name: "Outras rendas", icon: "plus-circle", color: "#84cc16" },
-];
-
-const EXPENSE_CATEGORIES = [
-  { name: "Moradia", icon: "home", color: "#8b5cf6" },
-  { name: "Contas da casa", icon: "zap", color: "#f59e0b" },
-  { name: "Internet e telefone", icon: "wifi", color: "#3b82f6" },
-  { name: "Assinaturas", icon: "repeat", color: "#ec4899" },
-  { name: "Mercado", icon: "shopping-cart", color: "#f97316" },
-  { name: "Alimentação", icon: "utensils", color: "#ef4444" },
-  { name: "Transporte", icon: "car", color: "#0ea5e9" },
-  { name: "Saúde", icon: "heart-pulse", color: "#e11d48" },
-  { name: "Educação", icon: "graduation-cap", color: "#6366f1" },
-  { name: "Lazer", icon: "party-popper", color: "#d946ef" },
-  { name: "Compras", icon: "shopping-bag", color: "#a855f7" },
-  { name: "Viagem", icon: "plane", color: "#0891b2" },
-  { name: "Outros", icon: "circle-ellipsis", color: "#64748b" },
-];
-
+const ids = db.select({ id: users.id }).from(users).all();
 db.transaction((tx) => {
-  tx.insert(settings).values({ id: 1 }).onConflictDoNothing().run();
-
-  tx.insert(cdiRates).values(INITIAL_CDI).onConflictDoNothing().run();
-
-  tx.insert(categories)
-    .values([
-      ...INCOME_CATEGORIES.map((c) => ({ ...c, kind: "income" as const })),
-      ...EXPENSE_CATEGORIES.map((c) => ({ ...c, kind: "expense" as const })),
-    ])
-    .onConflictDoNothing()
-    .run();
+  for (const { id } of ids) seedUserDefaults(tx, id);
 });
-
-const count = (table: string) =>
-  (sqlite.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
-
-console.log(
-  `✅ Seed concluído — categorias: ${count("categories")}, taxas CDI: ${count("cdi_rates")}, settings: ${count("settings")}`,
-);
+console.log(`✅ Dados iniciais conferidos em ${ids.length} conta(s).`);
 sqlite.close();

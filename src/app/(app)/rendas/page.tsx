@@ -6,12 +6,14 @@ import { formatBRL } from "@/lib/money";
 import { listCategories } from "@/server/finance/categories";
 import { incomeAppliesTo, listIncomes } from "@/server/finance/incomes";
 import { IncomesView } from "./incomes-view";
+import { requireUserId } from "@/server/auth/current";
 
 export const metadata: Metadata = { title: "Rendas" };
 
 export default async function IncomesPage() {
-  const incomes = listIncomes();
-  const categories = listCategories("income");
+  const uid = await requireUserId();
+  const incomes = listIncomes(uid);
+  const categories = listCategories(uid, "income");
   const month = currentMonth();
   const today = todayISO();
 

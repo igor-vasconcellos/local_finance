@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { check, index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { createdAt, DATE_GLOB, id, timestamps } from "./_helpers";
+import { users } from "./auth";
 import { institutions } from "./base";
 
 /**
@@ -11,6 +12,9 @@ export const savingsBoxes = sqliteTable(
   "savings_boxes",
   {
     id: id(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     institutionId: integer("institution_id")
       .notNull()
       .references(() => institutions.id, { onDelete: "restrict" }),
@@ -25,6 +29,7 @@ export const savingsBoxes = sqliteTable(
   },
   (t) => [
     index("savings_boxes_institution_idx").on(t.institutionId),
+    index("savings_boxes_user_idx").on(t.userId),
     check("boxes_cdi_percent", sql`${t.cdiPercentBp} > 0 AND ${t.cdiPercentBp} <= 50000`),
     check("boxes_goal_positive", sql`${t.goalCents} IS NULL OR ${t.goalCents} > 0`),
     check(

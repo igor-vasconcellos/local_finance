@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import { fieldErrors } from "@/lib/validation/auth";
+import { NotFoundError } from "@/server/finance/owner";
 
 /** Estado devolvido pelas Server Actions de formulário. */
 export type ActionState = {
@@ -23,4 +24,10 @@ export function parseId(value: FormDataEntryValue | null): number | null {
 
 export function invalid(error: z.ZodError): ActionState {
   return { fields: fieldErrors(error) };
+}
+
+/** Id de outra conta (ou apagado) vira mensagem amigável; qualquer outro erro sobe. */
+export function notFound(error: unknown): ActionState {
+  if (error instanceof NotFoundError) return { error: error.message };
+  throw error;
 }

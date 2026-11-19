@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { check, index, integer, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
 import { MONTH_GLOB, nowIso } from "./_helpers";
+import { users } from "./auth";
 import { incomeSources, recurringExpenses } from "./base";
 
 /**
@@ -13,6 +14,9 @@ export const monthlySettlements = sqliteTable(
   "monthly_settlements",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     incomeId: integer("income_id").references(() => incomeSources.id, { onDelete: "cascade" }),
     expenseId: integer("expense_id").references(() => recurringExpenses.id, { onDelete: "cascade" }),
     month: text("month").notNull(),
@@ -22,7 +26,7 @@ export const monthlySettlements = sqliteTable(
   (t) => [
     unique("settlements_income_month_uq").on(t.incomeId, t.month),
     unique("settlements_expense_month_uq").on(t.expenseId, t.month),
-    index("settlements_month_idx").on(t.month),
+    index("settlements_user_month_idx").on(t.userId, t.month),
     check(
       "settlements_exactly_one_source",
       sql`(${t.incomeId} IS NOT NULL AND ${t.expenseId} IS NULL) OR (${t.incomeId} IS NULL AND ${t.expenseId} IS NOT NULL)`,

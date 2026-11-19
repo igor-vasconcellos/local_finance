@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { check, index, integer, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
 import { DATE_GLOB, id, MONTH_GLOB, timestamps } from "./_helpers";
+import { users } from "./auth";
 import { categories } from "./base";
 import { creditCards } from "./cards";
 
@@ -14,6 +15,9 @@ export const simulations = sqliteTable(
   "simulations",
   {
     id: id(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     description: text("description").notNull(),
     paymentMethod: text("payment_method", { enum: ["credit", "debit"] }).notNull(),
     cardId: integer("card_id").references(() => creditCards.id, { onDelete: "cascade" }),
@@ -29,7 +33,7 @@ export const simulations = sqliteTable(
     ...timestamps(),
   },
   (t) => [
-    index("simulations_status_idx").on(t.status),
+    index("simulations_user_status_idx").on(t.userId, t.status),
     check("simulations_method", sql`${t.paymentMethod} IN ('credit', 'debit')`),
     check(
       "simulations_method_fields",

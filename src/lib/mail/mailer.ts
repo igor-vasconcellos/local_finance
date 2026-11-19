@@ -1,7 +1,7 @@
 import "server-only";
 import nodemailer, { type Transporter } from "nodemailer";
 import { env, mailTransport } from "@/env";
-import { twoFactorEmail } from "./templates";
+import { codeEmail, type CodePurpose } from "./templates";
 
 export type SendCodeResult =
   | { delivered: "email" }
@@ -20,12 +20,18 @@ function getTransporter(): Transporter {
 }
 
 /** Imprime o código no terminal do servidor (modo dev ou fallback). */
-function printToConsole(to: string, code: string, expiresAt: string, note?: string) {
+const CONSOLE_TITLE: Record<CodePurpose, string> = {
+  login: "CÓDIGO DE VERIFICAÇÃO (LOGIN)",
+  signup: "CÓDIGO DE CONFIRMAÇÃO DO CADASTRO",
+  reset: "CÓDIGO PARA REDEFINIR A SENHA",
+};
+
+function printToConsole(to: string, code: string, expiresAt: string, purpose: CodePurpose, note?: string) {
   const time = new Date(expiresAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   const lines = [
     "",
     "────────────────────────────────────────────────",
-    "  🔐 LOCAL FINANCE — CÓDIGO DE VERIFICAÇÃO",
+    `  🔐 LOCAL FINANCE — ${CONSOLE_TITLE[purpose]}`,
     "",
     `     ${code.split("").join("  ")}`,
     "",
@@ -38,7 +44,7 @@ function printToConsole(to: string, code: string, expiresAt: string, note?: stri
 }
 
 /**
- * Envia o código 2FA.
+ * Envia um código de 6 dígitos (login, confirmação de cadastro ou troca de senha).
  * - SMTP configurado → envia por e-mail.
  * - MAIL_MODE=auto e o SMTP falhar → avisa no log e imprime o código no terminal,
  *   para você não ficar trancado fora do próprio app.
@@ -49,15 +55,16 @@ export async function sendTwoFactorCode(params: {
   name: string;
   code: string;
   expiresAt: string;
+  purpose?: CodePurpose;
 }): Promise<SendCodeResult> {
-  const { to, name, code, expiresAt } = params;
+  const { to, name, code, expiresAt, purpose = "login" } = params;
 
   if (mailTransport === "console") {
-    printToConsole(to, code, expiresAt, "SMTP não configurado — modo console (dev).");
+    printToConsole(to, code, expiresAt, purpose, "SMTP não configurado — modo console (dev).");
     return { delivered: "console", reason: "not_configured" };
   }
 
-  const message = twoFactorEmail({ name, code, ttlMinutes: env.TWO_FACTOR_TTL_MINUTES });
+  const message = codeEmail({ name, code, ttlMinutes: env.TWO_FACTOR_TTL_MINUTES, purpose });
   try {
     await getTransporter().sendMail({
       from: env.SMTP_FROM ?? env.SMTP_USER,
@@ -70,7 +77,7 @@ export async function sendTwoFactorCode(params: {
   } catch (error) {
     console.error("[mail] Falha ao enviar e-mail via SMTP:", error instanceof Error ? error.message : error);
     if (env.MAIL_MODE === "smtp") throw new Error("Falha ao enviar o e-mail de verificação.");
-    printToConsole(to, code, expiresAt, "Falha no SMTP — código impresso aqui como fallback.");
+    printToConsole(to, code, expiresAt, purpose, "Falha no SMTP — código impresso aqui como fallback.");
     return { delivered: "console", reason: "smtp_failed" };
   }
 }

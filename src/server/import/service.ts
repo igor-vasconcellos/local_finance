@@ -27,9 +27,11 @@ import {
   cleanupEmptyInvoices,
   generateInstallments,
   getOrCreateInvoice,
+  ownsCard,
   slotForReferenceMonth,
   type Tx,
 } from "@/server/finance/cards";
+import { assertCategory, NotFoundError } from "@/server/finance/owner";
 
 // ----------------------------------------------------------------- Prévia --
 
@@ -88,15 +90,19 @@ export function lineKeys(bank: ImportBank, lines: ParsedLine[]): string[] {
   });
 }
 
-function categoryResolver() {
+function categoryResolver(uid: number) {
   const cats = db
     .select({ id: categories.id, name: categories.name })
     .from(categories)
-    .where(eq(categories.kind, "expense"))
+    .where(and(eq(categories.userId, uid), eq(categories.kind, "expense")))
     .all();
   const byName = new Map(cats.map((c) => [c.name.toLowerCase(), c.id]));
   const rules = new Map(
-    db.select({ k: merchantRules.merchantKey, c: merchantRules.categoryId }).from(merchantRules).all().map((r) => [r.k, r.c]),
+    db
+      .select({ k: merchantRules.merchantKey, c: merchantRules.categoryId })
+      .from(merchantRules)
+      .where(eq(merchantRules.userId, uid))
+      .all().map((r) => [r.k, r.c]),
   );
   return (description: string): number | null => {
     const learned = rules.get(merchantKey(description));
@@ -106,8 +112,18 @@ function categoryResolver() {
   };
 }
 
-export function buildPreview(cardId: number, fileName: string, st: ParsedStatement, today: ISODate = todayISO()): ImportPreview {
-  const card = db.select().from(creditCards).where(eq(creditCards.id, cardId)).get();
+export function buildPreview(
+  uid: number,
+  cardId: number,
+  fileName: string,
+  st: ParsedStatement,
+  today: ISODate = todayISO(),
+): ImportPreview {
+  const card = db
+    .select()
+    .from(creditCards)
+    .where(and(eq(creditCards.id, cardId), eq(creditCards.userId, uid)))
+    .get();
   if (!card) throw new Error("Cartão não encontrado.");
 
   // Fatura de destino: a do arquivo; no CSV, o vencimento vem do nome do arquivo ou
@@ -170,7 +186,7 @@ export function buildPreview(cardId: number, fileName: string, st: ParsedStateme
     return idx >= 0;
   };
 
-  const resolveCategory = categoryResolver();
+  const resolveCategory = categoryResolver(uid);
   const lines: PreviewLine[] = st.lines.map((l, i) => {
     const key = keys[i];
     let status: LineStatus;
@@ -247,10 +263,15 @@ function markPaid(tx: Tx, invoiceId: number, paidIds: number[]) {
   if (changed) paidIds.push(invoiceId);
 }
 
-export function commitImport(input: CommitInput): CommitResult {
+export function commitImport(uid: number, input: CommitInput): CommitResult {
   return db.transaction((tx) => {
-    const card = tx.select().from(creditCards).where(eq(creditCards.id, input.cardId)).get();
-    if (!card) throw new Error("Cartão não encontrado.");
+    const card = tx
+      .select()
+      .from(creditCards)
+      .where(and(eq(creditCards.id, input.cardId), eq(creditCards.userId, uid)))
+      .get();
+    if (!card) throw new NotFoundError("Cartão");
+    for (const l of input.lines) assertCategory(tx, uid, l.categoryId, "expense");
 
     if (input.updateCardSchedule && input.datesFromFile) {
       tx.update(creditCards)
@@ -363,8 +384,8 @@ export function commitImport(input: CommitInput): CommitResult {
         const key = merchantKey(l.description);
         if (key) {
           tx.insert(merchantRules)
-            .values({ merchantKey: key, categoryId: l.categoryId })
-            .onConflictDoUpdate({ target: merchantRules.merchantKey, set: { categoryId: l.categoryId, updatedAt: new Date().toISOString() } })
+            .values({ userId: uid, merchantKey: key, categoryId: l.categoryId })
+            .onConflictDoUpdate({ target: [merchantRules.userId, merchantRules.merchantKey], set: { categoryId: l.categoryId, updatedAt: new Date().toISOString() } })
             .run();
         }
       }
@@ -388,7 +409,8 @@ export function commitImport(input: CommitInput): CommitResult {
 
 export type ImportHistoryRow = typeof invoiceImports.$inferSelect & { bankLabel: string };
 
-export function listImports(cardId: number): ImportHistoryRow[] {
+export function listImports(uid: number, cardId: number): ImportHistoryRow[] {
+  if (!ownsCard(db, uid, cardId)) return [];
   return db
     .select()
     .from(invoiceImports)
@@ -399,8 +421,9 @@ export function listImports(cardId: number): ImportHistoryRow[] {
 }
 
 /** Apaga tudo o que a importação criou e desfaz as faturas que ela marcou como pagas. */
-export function undoImport(cardId: number, importId: number): boolean {
+export function undoImport(uid: number, cardId: number, importId: number): boolean {
   return db.transaction((tx) => {
+    if (!ownsCard(tx, uid, cardId)) return false;
     const imp = tx
       .select()
       .from(invoiceImports)

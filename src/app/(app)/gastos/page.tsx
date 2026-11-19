@@ -8,12 +8,14 @@ import { expenseAppliesTo, listExpenses } from "@/server/finance/expenses";
 import { listOneTimeExpenses } from "@/server/finance/one-time";
 import { ExpensesView } from "./expenses-view";
 import { OneTimeList } from "./one-time-list";
+import { requireUserId } from "@/server/auth/current";
 
 export const metadata: Metadata = { title: "Gastos fixos" };
 
 export default async function ExpensesPage() {
-  const expenses = listExpenses();
-  const categories = listCategories("expense");
+  const uid = await requireUserId();
+  const expenses = listExpenses(uid);
+  const categories = listCategories(uid, "expense");
   const month = currentMonth();
 
   const active = expenses.filter((e) => expenseAppliesTo(e, month));
@@ -89,7 +91,7 @@ export default async function ExpensesPage() {
         )}
       </div>
 
-      <OneTimeList items={listOneTimeExpenses()} />
+      <OneTimeList items={listOneTimeExpenses(uid)} />
     </>
   );
 }

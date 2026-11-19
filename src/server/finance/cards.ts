@@ -14,6 +14,7 @@ import {
 } from "@/lib/dates";
 import { splitInstallments } from "@/lib/money";
 import type { CardInput, PurchaseInput } from "@/lib/validation/finance";
+import { assertCard, assertCategory } from "./owner";
 
 export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -72,11 +73,19 @@ function invoiceTotals(cardId: number) {
     .all();
 }
 
-export function listCards(today: ISODate = todayISO()): CardSummary[] {
+/** O cartão é da conta? (protege todas as rotas que recebem cardId de fora) */
+export function ownsCard(q: typeof db | Tx, uid: number, cardId: number): boolean {
+  return Boolean(
+    q.select({ id: creditCards.id }).from(creditCards).where(and(eq(creditCards.id, cardId), eq(creditCards.userId, uid))).get(),
+  );
+}
+
+export function listCards(uid: number, today: ISODate = todayISO()): CardSummary[] {
   const cards = db
     .select({ card: creditCards, institutionName: institutions.name })
     .from(creditCards)
     .leftJoin(institutions, eq(institutions.id, creditCards.institutionId))
+    .where(eq(creditCards.userId, uid))
     .orderBy(sql`${creditCards.active} DESC`, asc(creditCards.name))
     .all();
 
@@ -103,38 +112,39 @@ export function listCards(today: ISODate = todayISO()): CardSummary[] {
   });
 }
 
-export function getCard(id: number) {
+export function getCard(uid: number, id: number) {
   return db
     .select({ card: creditCards, institutionName: institutions.name })
     .from(creditCards)
     .leftJoin(institutions, eq(institutions.id, creditCards.institutionId))
-    .where(eq(creditCards.id, id))
+    .where(and(eq(creditCards.id, id), eq(creditCards.userId, uid)))
     .get();
 }
 
-function upsertInstitution(tx: Tx, name: string): number | null {
+export function upsertInstitution(tx: Tx, uid: number, name: string): number | null {
   const clean = name.trim();
   if (!clean) return null;
   const existing = tx
     .select({ id: institutions.id })
     .from(institutions)
-    .where(sql`lower(${institutions.name}) = lower(${clean})`)
+    .where(and(eq(institutions.userId, uid), sql`lower(${institutions.name}) = lower(${clean})`))
     .get();
   if (existing) return existing.id;
-  return tx.insert(institutions).values({ name: clean }).returning({ id: institutions.id }).get().id;
+  return tx.insert(institutions).values({ userId: uid, name: clean }).returning({ id: institutions.id }).get().id;
 }
 
-export function listInstitutionNames(): string[] {
-  return db.select({ name: institutions.name }).from(institutions).orderBy(asc(institutions.name)).all().map((r) => r.name);
+export function listInstitutionNames(uid: number): string[] {
+  return db.select({ name: institutions.name }).from(institutions).where(eq(institutions.userId, uid)).orderBy(asc(institutions.name)).all().map((r) => r.name);
 }
 
-export function createCard(input: CardInput) {
+export function createCard(uid: number, input: CardInput) {
   return db.transaction((tx) =>
     tx
       .insert(creditCards)
       .values({
+        userId: uid,
         name: input.name,
-        institutionId: upsertInstitution(tx, input.institution),
+        institutionId: upsertInstitution(tx, uid, input.institution),
         limitCents: input.limit,
         closingDay: input.closingDay,
         dueDay: input.dueDay,
@@ -146,14 +156,15 @@ export function createCard(input: CardInput) {
 }
 
 /** Mudar fechamento/vencimento vale para compras novas; faturas já geradas mantêm suas datas. */
-export function updateCard(id: number, input: CardInput) {
+export function updateCard(uid: number, id: number, input: CardInput) {
   return db.transaction(
     (tx) =>
+      ownsCard(tx, uid, id) &&
       tx
         .update(creditCards)
         .set({
           name: input.name,
-          institutionId: upsertInstitution(tx, input.institution),
+          institutionId: upsertInstitution(tx, uid, input.institution),
           limitCents: input.limit,
           closingDay: input.closingDay,
           dueDay: input.dueDay,
@@ -164,13 +175,14 @@ export function updateCard(id: number, input: CardInput) {
   );
 }
 
-export function setCardActive(id: number, active: boolean) {
-  return db.update(creditCards).set({ active }).where(eq(creditCards.id, id)).run().changes > 0;
+export function setCardActive(uid: number, id: number, active: boolean) {
+  return db.update(creditCards).set({ active }).where(and(eq(creditCards.id, id), eq(creditCards.userId, uid))).run().changes > 0;
 }
 
 /** Exclui o cartão com todas as compras, parcelas e faturas. */
-export function deleteCard(id: number) {
+export function deleteCard(uid: number, id: number) {
   return db.transaction((tx) => {
+    if (!ownsCard(tx, uid, id)) return false;
     tx.delete(cardPurchases).where(eq(cardPurchases.cardId, id)).run(); // parcelas vão em cascata
     return tx.delete(creditCards).where(eq(creditCards.id, id)).run().changes > 0; // faturas em cascata
   });
@@ -245,7 +257,9 @@ function purchaseValues(input: PurchaseInput) {
 }
 
 /** Cria a compra e suas parcelas dentro de uma transação já aberta. */
-export function createPurchaseTx(tx: Tx, input: PurchaseInput, simulationId: number | null = null) {
+export function createPurchaseTx(tx: Tx, uid: number, input: PurchaseInput, simulationId: number | null = null) {
+  assertCard(tx, uid, input.cardId);
+  assertCategory(tx, uid, input.categoryId, "expense");
   const { id } = tx
     .insert(cardPurchases)
     .values({ ...purchaseValues(input), simulationId })
@@ -255,19 +269,27 @@ export function createPurchaseTx(tx: Tx, input: PurchaseInput, simulationId: num
   return { id };
 }
 
-export function createPurchase(input: PurchaseInput) {
-  return db.transaction((tx) => createPurchaseTx(tx, input));
+export function createPurchase(uid: number, input: PurchaseInput) {
+  return db.transaction((tx) => createPurchaseTx(tx, uid, input));
 }
 
 /** Editar uma compra recalcula todas as parcelas (valor, quantidade, data ou cartão). */
-export function updatePurchase(id: number, input: PurchaseInput) {
+/** Compra da conta (via cartão). */
+function ownedPurchase(q: typeof db | Tx, uid: number, id: number) {
+  return q
+    .select({ id: cardPurchases.id, cardId: cardPurchases.cardId, firstInvoiceMonth: cardPurchases.firstInvoiceMonth })
+    .from(cardPurchases)
+    .innerJoin(creditCards, eq(creditCards.id, cardPurchases.cardId))
+    .where(and(eq(cardPurchases.id, id), eq(creditCards.userId, uid)))
+    .get();
+}
+
+export function updatePurchase(uid: number, id: number, input: PurchaseInput) {
   return db.transaction((tx) => {
-    const before = tx
-      .select({ cardId: cardPurchases.cardId, firstInvoiceMonth: cardPurchases.firstInvoiceMonth })
-      .from(cardPurchases)
-      .where(eq(cardPurchases.id, id))
-      .get();
+    const before = ownedPurchase(tx, uid, id);
     if (!before) return false;
+    assertCard(tx, uid, input.cardId);
+    assertCategory(tx, uid, input.categoryId, "expense");
     // Fatura fixada pelo banco só vale no mesmo cartão.
     const firstInvoiceMonth = before.cardId === input.cardId ? before.firstInvoiceMonth : null;
     tx.delete(installments).where(eq(installments.purchaseId, id)).run();
@@ -279,9 +301,9 @@ export function updatePurchase(id: number, input: PurchaseInput) {
   });
 }
 
-export function deletePurchase(id: number) {
+export function deletePurchase(uid: number, id: number) {
   return db.transaction((tx) => {
-    const row = tx.select({ cardId: cardPurchases.cardId }).from(cardPurchases).where(eq(cardPurchases.id, id)).get();
+    const row = ownedPurchase(tx, uid, id);
     if (!row) return false;
     tx.delete(cardPurchases).where(eq(cardPurchases.id, id)).run();
     cleanupEmptyInvoices(tx, row.cardId);
@@ -289,8 +311,8 @@ export function deletePurchase(id: number) {
   });
 }
 
-export function getPurchase(id: number) {
-  return db.select().from(cardPurchases).where(eq(cardPurchases.id, id)).get();
+export function getPurchase(uid: number, id: number) {
+  return ownedPurchase(db, uid, id) ? db.select().from(cardPurchases).where(eq(cardPurchases.id, id)).get() : undefined;
 }
 
 // ------------------------------------------------------------- Faturas --
@@ -302,7 +324,8 @@ export type InvoiceMonth = {
 };
 
 /** Meses com fatura (com lançamentos) do cartão, em ordem. */
-export function listInvoiceMonths(cardId: number, today: ISODate = todayISO()): InvoiceMonth[] {
+export function listInvoiceMonths(uid: number, cardId: number, today: ISODate = todayISO()): InvoiceMonth[] {
+  if (!ownsCard(db, uid, cardId)) return [];
   return invoiceTotals(cardId).map((t) => ({
     referenceMonth: t.referenceMonth,
     totalCents: t.totalCents,
@@ -322,8 +345,12 @@ export type InvoiceItem = {
   categoryColor: string | null;
 };
 
-export function getInvoiceDetail(cardId: number, referenceMonth: Month, today: ISODate = todayISO()) {
-  const card = db.select().from(creditCards).where(eq(creditCards.id, cardId)).get();
+export function getInvoiceDetail(uid: number, cardId: number, referenceMonth: Month, today: ISODate = todayISO()) {
+  const card = db
+    .select()
+    .from(creditCards)
+    .where(and(eq(creditCards.id, cardId), eq(creditCards.userId, uid)))
+    .get();
   if (!card) return null;
 
   const row = db
@@ -386,8 +413,9 @@ export function getInvoiceDetail(cardId: number, referenceMonth: Month, today: I
 }
 
 /** Exclui um crédito/estorno de uma fatura do cartão. */
-export function deleteInvoiceCredit(cardId: number, creditId: number) {
+export function deleteInvoiceCredit(uid: number, cardId: number, creditId: number) {
   return db.transaction((tx) => {
+    if (!ownsCard(tx, uid, cardId)) return false;
     const row = tx
       .select({ id: invoiceCredits.id })
       .from(invoiceCredits)
@@ -401,8 +429,9 @@ export function deleteInvoiceCredit(cardId: number, creditId: number) {
   });
 }
 
-export function setInvoicePaid(cardId: number, referenceMonth: Month, paid: boolean) {
+export function setInvoicePaid(uid: number, cardId: number, referenceMonth: Month, paid: boolean) {
   return (
+    ownsCard(db, uid, cardId) &&
     db
       .update(invoices)
       .set({ status: paid ? "paid" : "open", paidAt: paid ? new Date().toISOString() : null })
@@ -423,7 +452,8 @@ export type PurchaseRow = typeof cardPurchases.$inferSelect & {
 };
 
 /** Compras do cartão com o que ainda falta pagar (faturas não pagas). */
-export function listPurchases(cardId: number): PurchaseRow[] {
+export function listPurchases(uid: number, cardId: number): PurchaseRow[] {
+  if (!ownsCard(db, uid, cardId)) return [];
   const rows = db
     .select({ p: cardPurchases, categoryName: categories.name, categoryColor: categories.color })
     .from(cardPurchases)

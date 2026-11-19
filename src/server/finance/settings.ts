@@ -1,5 +1,5 @@
 import "server-only";
-import { desc, eq, lte } from "drizzle-orm";
+import { and, asc, desc, eq, lte } from "drizzle-orm";
 import { db } from "@/db/client";
 import { cdiRates, settings } from "@/db/schema";
 import { todayISO, type ISODate } from "@/lib/dates";
@@ -11,9 +11,9 @@ export type AppSettings = {
   accountBalanceDate: ISODate | null;
 };
 
-export function getSettings(): AppSettings {
-  db.insert(settings).values({ id: 1 }).onConflictDoNothing().run();
-  const row = db.select().from(settings).where(eq(settings.id, 1)).get()!;
+export function getSettings(uid: number): AppSettings {
+  db.insert(settings).values({ userId: uid }).onConflictDoNothing().run();
+  const row = db.select().from(settings).where(eq(settings.userId, uid)).get()!;
   return {
     greenThresholdBp: row.greenThresholdBp,
     yellowThresholdBp: row.yellowThresholdBp,
@@ -22,50 +22,49 @@ export function getSettings(): AppSettings {
   };
 }
 
-export function updateThresholds(greenBp: number, yellowBp: number) {
-  getSettings();
-  db.update(settings).set({ greenThresholdBp: greenBp, yellowThresholdBp: yellowBp }).where(eq(settings.id, 1)).run();
+export function updateThresholds(uid: number, greenBp: number, yellowBp: number) {
+  getSettings(uid);
+  db.update(settings).set({ greenThresholdBp: greenBp, yellowThresholdBp: yellowBp }).where(eq(settings.userId, uid)).run();
 }
 
-export function updateAccountBalance(cents: number, date: ISODate) {
-  getSettings();
-  db.update(settings).set({ accountBalanceCents: cents, accountBalanceDate: date }).where(eq(settings.id, 1)).run();
+export function updateAccountBalance(uid: number, cents: number, date: ISODate) {
+  getSettings(uid);
+  db.update(settings).set({ accountBalanceCents: cents, accountBalanceDate: date }).where(eq(settings.userId, uid)).run();
 }
 
 // ------------------------------------------------------------------ CDI --
 
 export type CdiRate = { id: number; annualRateBp: number; effectiveFrom: ISODate };
 
-export function listCdiRates(): CdiRate[] {
-  return db
-    .select({ id: cdiRates.id, annualRateBp: cdiRates.annualRateBp, effectiveFrom: cdiRates.effectiveFrom })
-    .from(cdiRates)
-    .orderBy(desc(cdiRates.effectiveFrom))
-    .all();
+const rateCols = { id: cdiRates.id, annualRateBp: cdiRates.annualRateBp, effectiveFrom: cdiRates.effectiveFrom };
+
+export function listCdiRates(uid: number): CdiRate[] {
+  return db.select(rateCols).from(cdiRates).where(eq(cdiRates.userId, uid)).orderBy(desc(cdiRates.effectiveFrom)).all();
 }
 
 /** Taxa vigente numa data (a mais recente com effective_from ≤ data; se nenhuma, a mais antiga). */
-export function cdiRateOn(date: ISODate = todayISO()): CdiRate | undefined {
+export function cdiRateOn(uid: number, date: ISODate = todayISO()): CdiRate | undefined {
   return (
     db
-      .select({ id: cdiRates.id, annualRateBp: cdiRates.annualRateBp, effectiveFrom: cdiRates.effectiveFrom })
+      .select(rateCols)
       .from(cdiRates)
-      .where(lte(cdiRates.effectiveFrom, date))
+      .where(and(eq(cdiRates.userId, uid), lte(cdiRates.effectiveFrom, date)))
       .orderBy(desc(cdiRates.effectiveFrom))
-      .get() ?? listCdiRates().at(-1)
+      .get() ??
+    db.select(rateCols).from(cdiRates).where(eq(cdiRates.userId, uid)).orderBy(asc(cdiRates.effectiveFrom)).get()
   );
 }
 
 /** Registra nova taxa a partir de uma data (substitui se já houver taxa nessa mesma data). */
-export function setCdiRate(annualRateBp: number, effectiveFrom: ISODate) {
+export function setCdiRate(uid: number, annualRateBp: number, effectiveFrom: ISODate) {
   db.insert(cdiRates)
-    .values({ annualRateBp, effectiveFrom })
-    .onConflictDoUpdate({ target: cdiRates.effectiveFrom, set: { annualRateBp } })
+    .values({ userId: uid, annualRateBp, effectiveFrom })
+    .onConflictDoUpdate({ target: [cdiRates.userId, cdiRates.effectiveFrom], set: { annualRateBp } })
     .run();
 }
 
 /** Remove uma taxa do histórico (sempre mantém pelo menos uma). */
-export function deleteCdiRate(id: number): boolean {
-  if (listCdiRates().length <= 1) return false;
-  return db.delete(cdiRates).where(eq(cdiRates.id, id)).run().changes > 0;
+export function deleteCdiRate(uid: number, id: number): boolean {
+  if (listCdiRates(uid).length <= 1) return false;
+  return db.delete(cdiRates).where(and(eq(cdiRates.id, id), eq(cdiRates.userId, uid))).run().changes > 0;
 }

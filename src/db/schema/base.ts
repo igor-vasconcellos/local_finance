@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { check, index, integer, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
 import { createdAt, DATE_GLOB, id, MONTH_GLOB, timestamps } from "./_helpers";
+import { users } from "./auth";
 import { simulations } from "./simulations";
 
 /** Categorias para rendas e despesas (ícone = nome de ícone Lucide). */
@@ -8,6 +9,9 @@ export const categories = sqliteTable(
   "categories",
   {
     id: id(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     kind: text("kind", { enum: ["income", "expense"] }).notNull(),
     color: text("color"),
@@ -15,24 +19,35 @@ export const categories = sqliteTable(
     createdAt: createdAt(),
   },
   (t) => [
-    unique("categories_name_kind_uq").on(t.name, t.kind),
+    unique("categories_user_name_kind_uq").on(t.userId, t.name, t.kind),
+    index("categories_user_idx").on(t.userId),
     check("categories_kind", sql`${t.kind} IN ('income', 'expense')`),
   ],
 );
 
 /** Instituições financeiras (compartilhadas por cartões e caixinhas). */
-export const institutions = sqliteTable("institutions", {
-  id: id(),
-  name: text("name").notNull().unique(),
-  color: text("color"),
-  createdAt: createdAt(),
-});
+export const institutions = sqliteTable(
+  "institutions",
+  {
+    id: id(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    color: text("color"),
+    createdAt: createdAt(),
+  },
+  (t) => [unique("institutions_user_name_uq").on(t.userId, t.name)],
+);
 
 /** MÓDULO 2 — Fontes de renda (mensais recorrentes ou únicas). */
 export const incomeSources = sqliteTable(
   "income_sources",
   {
     id: id(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     type: text("type", { enum: ["salary", "pro_labore", "extra", "other"] }).notNull(),
     amountCents: integer("amount_cents").notNull(),
@@ -47,6 +62,7 @@ export const incomeSources = sqliteTable(
     ...timestamps(),
   },
   (t) => [
+    index("income_sources_user_idx").on(t.userId),
     check("income_type", sql`${t.type} IN ('salary', 'pro_labore', 'extra', 'other')`),
     check("income_amount_positive", sql`${t.amountCents} > 0`),
     check("income_recurrence", sql`${t.recurrence} IN ('monthly', 'once')`),
@@ -69,6 +85,9 @@ export const recurringExpenses = sqliteTable(
   "recurring_expenses",
   {
     id: id(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     categoryId: integer("category_id")
       .notNull()
@@ -83,6 +102,7 @@ export const recurringExpenses = sqliteTable(
   },
   (t) => [
     index("recurring_expenses_category_idx").on(t.categoryId),
+    index("recurring_expenses_user_idx").on(t.userId),
     check("recurring_amount_positive", sql`${t.amountCents} > 0`),
     check("recurring_due_day", sql`${t.dueDay} BETWEEN 1 AND 31`),
     check("recurring_start_month_fmt", sql`${t.startMonth} GLOB '${sql.raw(MONTH_GLOB)}'`),
@@ -101,6 +121,9 @@ export const oneTimeExpenses = sqliteTable(
   "one_time_expenses",
   {
     id: id(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     description: text("description").notNull(),
     categoryId: integer("category_id").references(() => categories.id, { onDelete: "set null" }),
     amountCents: integer("amount_cents").notNull(),
@@ -112,7 +135,7 @@ export const oneTimeExpenses = sqliteTable(
     ...timestamps(),
   },
   (t) => [
-    index("one_time_expenses_date_idx").on(t.date),
+    index("one_time_expenses_user_date_idx").on(t.userId, t.date),
     check("one_time_amount_positive", sql`${t.amountCents} > 0`),
     check("one_time_date_fmt", sql`${t.date} GLOB '${sql.raw(DATE_GLOB)}'`),
   ],

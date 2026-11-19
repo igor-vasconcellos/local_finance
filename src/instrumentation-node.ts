@@ -1,8 +1,6 @@
 import path from "node:path";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-import { db } from "@/db/client";
-import { settings } from "@/db/schema";
+import { db, sqlite } from "@/db/client";
+import { runMigrations } from "@/db/migrate";
 
-/** Aplica migrações pendentes e garante a linha de configurações. */
-migrate(db, { migrationsFolder: path.join(/*turbopackIgnore: true*/ process.cwd(), "drizzle") });
-db.insert(settings).values({ id: 1 }).onConflictDoNothing().run();
+/** Aplica migrações pendentes ao iniciar. Os dados iniciais são criados por conta, no cadastro. */
+runMigrations(sqlite, db, path.join(/*turbopackIgnore: true*/ process.cwd(), "drizzle"));

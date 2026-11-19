@@ -6,13 +6,15 @@ import { listCategories } from "@/server/finance/categories";
 import { projectMonths } from "@/server/finance/projection";
 import { listSimulations } from "@/server/finance/simulations";
 import { SimulatorView } from "./simulator-view";
+import { requireUserId } from "@/server/auth/current";
 
 export const metadata: Metadata = { title: "Simulador" };
 
 export default async function SimulatorPage() {
+  const uid = await requireUserId();
   const today = todayISO();
-  const { months, thresholds } = projectMonths(currentMonth(), 12, today);
-  const cards = listCards(today)
+  const { months, thresholds } = projectMonths(uid, currentMonth(), 12, today);
+  const cards = listCards(uid, today)
     .filter((c) => c.active)
     .map((c) => ({
       id: c.id,
@@ -32,8 +34,8 @@ export default async function SimulatorPage() {
         months={months}
         thresholds={thresholds}
         cards={cards}
-        categories={listCategories("expense")}
-        simulations={listSimulations()}
+        categories={listCategories(uid, "expense")}
+        simulations={listSimulations(uid)}
         today={today}
       />
     </>

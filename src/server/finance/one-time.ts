@@ -1,9 +1,9 @@
 import "server-only";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { categories, oneTimeExpenses } from "@/db/schema";
 
-export function listOneTimeExpenses(limit = 50) {
+export function listOneTimeExpenses(uid: number, limit = 50) {
   return db
     .select({
       id: oneTimeExpenses.id,
@@ -16,11 +16,12 @@ export function listOneTimeExpenses(limit = 50) {
     })
     .from(oneTimeExpenses)
     .leftJoin(categories, eq(categories.id, oneTimeExpenses.categoryId))
+    .where(eq(oneTimeExpenses.userId, uid))
     .orderBy(desc(oneTimeExpenses.date), desc(oneTimeExpenses.id))
     .limit(limit)
     .all();
 }
 
-export function deleteOneTimeExpense(id: number) {
-  return db.delete(oneTimeExpenses).where(eq(oneTimeExpenses.id, id)).run().changes > 0;
+export function deleteOneTimeExpense(uid: number, id: number) {
+  return db.delete(oneTimeExpenses).where(and(eq(oneTimeExpenses.id, id), eq(oneTimeExpenses.userId, uid))).run().changes > 0;
 }

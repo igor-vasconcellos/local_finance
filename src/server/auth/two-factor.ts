@@ -1,6 +1,6 @@
 import "server-only";
 import crypto from "node:crypto";
-import { and, eq, isNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { authChallenges } from "@/db/schema";
 import { env } from "@/env";
@@ -19,13 +19,20 @@ function generateCode(): string {
   return crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
 }
 
+/** login = 2FA do login; signup = confirmar e-mail; reset = trocar a senha. */
+export type ChallengePurpose = "login" | "signup" | "reset";
+
 export type NewChallenge = { challengeId: string; code: string; expiresAt: string };
 
 /**
  * Cria um novo desafio 2FA para o usuário e invalida os anteriores ainda pendentes.
  * O código em claro só existe na memória (para ser enviado); no banco vai o HMAC.
  */
-export function createChallenge(userId: number, now: Date = new Date()): NewChallenge {
+export function createChallenge(
+  userId: number,
+  now: Date = new Date(),
+  purpose: ChallengePurpose = "login",
+): NewChallenge {
   const challengeId = crypto.randomUUID();
   const code = generateCode();
   const expiresAt = new Date(now.getTime() + env.TWO_FACTOR_TTL_MINUTES * 60_000).toISOString();
@@ -40,6 +47,7 @@ export function createChallenge(userId: number, now: Date = new Date()): NewChal
       .values({
         id: challengeId,
         userId,
+        purpose,
         codeHash: hashCode(challengeId, code),
         expiresAt,
         createdAt: now.toISOString(), // mesma fonte de tempo das demais regras
@@ -57,6 +65,7 @@ export function createChallenge(userId: number, now: Date = new Date()): NewChal
 export type PendingChallenge = {
   id: string;
   userId: number;
+  purpose: ChallengePurpose;
   expiresAt: string;
   createdAt: string;
   attemptsLeft: number;
@@ -75,6 +84,7 @@ export function getPendingChallenge(
   return {
     id: row.id,
     userId: row.userId,
+    purpose: row.purpose,
     expiresAt: row.expiresAt,
     createdAt: row.createdAt,
     attemptsLeft,
@@ -97,15 +107,15 @@ const RESEND_WINDOW_MS = 60 * 60_000;
 export function getResendTarget(
   challengeId: string | undefined,
   now: Date = new Date(),
-): { userId: number; waitSeconds: number } | null {
+): { userId: number; purpose: ChallengePurpose; waitSeconds: number } | null {
   if (!challengeId) return null;
   const row = db.select().from(authChallenges).where(eq(authChallenges.id, challengeId)).get();
   if (!row || now.getTime() - new Date(row.createdAt).getTime() > RESEND_WINDOW_MS) return null;
-  return { userId: row.userId, waitSeconds: secondsUntilResend(row, now) };
+  return { userId: row.userId, purpose: row.purpose, waitSeconds: secondsUntilResend(row, now) };
 }
 
 export type VerifyResult =
-  | { ok: true; userId: number }
+  | { ok: true; userId: number; purpose: ChallengePurpose }
   | { ok: false; reason: "invalid"; attemptsLeft: number }
   | { ok: false; reason: "expired" | "too_many_attempts" | "not_found" };
 
@@ -117,9 +127,14 @@ export function verifyChallenge(
   challengeId: string | undefined,
   code: string,
   now: Date = new Date(),
+  accepted: ChallengePurpose[] = ["login", "signup"],
 ): VerifyResult {
   if (!challengeId) return { ok: false, reason: "not_found" };
   const nowIso = now.toISOString();
+
+  // Um código de "trocar senha" nunca serve para entrar, e vice-versa.
+  const kind = db.select({ purpose: authChallenges.purpose }).from(authChallenges).where(eq(authChallenges.id, challengeId)).get();
+  if (!kind || !accepted.includes(kind.purpose)) return { ok: false, reason: "not_found" };
 
   const row = db
     .update(authChallenges)
@@ -158,8 +173,23 @@ export function verifyChallenge(
     .update(authChallenges)
     .set({ consumedAt: nowIso })
     .where(and(eq(authChallenges.id, challengeId), isNull(authChallenges.consumedAt)))
-    .returning({ userId: authChallenges.userId })
+    .returning({ userId: authChallenges.userId, purpose: authChallenges.purpose })
     .get();
 
-  return consumed ? { ok: true, userId: consumed.userId } : { ok: false, reason: "not_found" };
+  return consumed ? { ok: true, userId: consumed.userId, purpose: consumed.purpose } : { ok: false, reason: "not_found" };
+}
+
+/**
+ * Segundos até poder enviar outro código desse tipo para a conta (0 = já pode).
+ * Fica no banco (não no cookie), então não dá para burlar limpando cookies:
+ * protege contra usar o cadastro/"esqueci a senha" para disparar e-mails em massa.
+ */
+export function sendCooldown(userId: number, purpose: ChallengePurpose, now: Date = new Date()): number {
+  const last = db
+    .select({ createdAt: authChallenges.createdAt })
+    .from(authChallenges)
+    .where(and(eq(authChallenges.userId, userId), eq(authChallenges.purpose, purpose)))
+    .orderBy(desc(authChallenges.createdAt))
+    .get();
+  return last ? secondsUntilResend(last, now) : 0;
 }

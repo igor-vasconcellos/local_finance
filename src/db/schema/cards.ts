@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { check, index, integer, sqliteTable, text, unique, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 import { createdAt, DATE_GLOB, id, MONTH_GLOB, timestamps } from "./_helpers";
+import { users } from "./auth";
 import { categories, institutions } from "./base";
 import { simulations } from "./simulations";
 
@@ -9,6 +10,9 @@ export const creditCards = sqliteTable(
   "credit_cards",
   {
     id: id(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     institutionId: integer("institution_id").references(() => institutions.id, {
       onDelete: "set null",
@@ -21,6 +25,7 @@ export const creditCards = sqliteTable(
     ...timestamps(),
   },
   (t) => [
+    index("credit_cards_user_idx").on(t.userId),
     check("cards_limit_nonneg", sql`${t.limitCents} >= 0`),
     check("cards_closing_day", sql`${t.closingDay} BETWEEN 1 AND 31`),
     check("cards_due_day", sql`${t.dueDay} BETWEEN 1 AND 31`),
@@ -178,11 +183,17 @@ export const merchantRules = sqliteTable(
   "merchant_rules",
   {
     id: id(),
-    merchantKey: text("merchant_key").notNull().unique(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    merchantKey: text("merchant_key").notNull(),
     categoryId: integer("category_id")
       .notNull()
       .references(() => categories.id, { onDelete: "cascade" }),
     ...timestamps(),
   },
-  (t) => [check("merchant_rules_key_nonempty", sql`length(${t.merchantKey}) > 0`)],
+  (t) => [
+    unique("merchant_rules_user_key_uq").on(t.userId, t.merchantKey),
+    check("merchant_rules_key_nonempty", sql`length(${t.merchantKey}) > 0`),
+  ],
 );

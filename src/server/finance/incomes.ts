@@ -1,16 +1,17 @@
 import "server-only";
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { categories, incomeSources } from "@/db/schema";
 import { monthOf, type Month } from "@/lib/dates";
 import type { IncomeInput } from "@/lib/validation/finance";
+import { assertCategory } from "./owner";
 
 export type IncomeRow = typeof incomeSources.$inferSelect & {
   categoryName: string | null;
   categoryColor: string | null;
 };
 
-export function listIncomes(): IncomeRow[] {
+export function listIncomes(uid: number): IncomeRow[] {
   return db
     .select({
       income: incomeSources,
@@ -19,6 +20,7 @@ export function listIncomes(): IncomeRow[] {
     })
     .from(incomeSources)
     .leftJoin(categories, eq(categories.id, incomeSources.categoryId))
+    .where(eq(incomeSources.userId, uid))
     .orderBy(desc(incomeSources.active), asc(incomeSources.recurrence), desc(incomeSources.amountCents))
     .all()
     .map((r) => ({ ...r.income, categoryName: r.categoryName, categoryColor: r.categoryColor }));
@@ -44,18 +46,22 @@ function toValues(input: IncomeInput) {
     : { ...common, recurrence: "once" as const, payDay: null, payDate: input.payDate, startMonth: monthOf(input.payDate), endMonth: null };
 }
 
-export function createIncome(input: IncomeInput) {
-  return db.insert(incomeSources).values(toValues(input)).returning({ id: incomeSources.id }).get();
+export function createIncome(uid: number, input: IncomeInput) {
+  assertCategory(db, uid, input.categoryId, "income");
+  return db.insert(incomeSources).values({ ...toValues(input), userId: uid }).returning({ id: incomeSources.id }).get();
 }
 
-export function updateIncome(id: number, input: IncomeInput) {
-  return db.update(incomeSources).set(toValues(input)).where(eq(incomeSources.id, id)).run().changes > 0;
+const mine = (uid: number, id: number) => and(eq(incomeSources.id, id), eq(incomeSources.userId, uid));
+
+export function updateIncome(uid: number, id: number, input: IncomeInput) {
+  assertCategory(db, uid, input.categoryId, "income");
+  return db.update(incomeSources).set(toValues(input)).where(mine(uid, id)).run().changes > 0;
 }
 
-export function setIncomeActive(id: number, active: boolean) {
-  return db.update(incomeSources).set({ active }).where(eq(incomeSources.id, id)).run().changes > 0;
+export function setIncomeActive(uid: number, id: number, active: boolean) {
+  return db.update(incomeSources).set({ active }).where(mine(uid, id)).run().changes > 0;
 }
 
-export function deleteIncome(id: number) {
-  return db.delete(incomeSources).where(eq(incomeSources.id, id)).run().changes > 0;
+export function deleteIncome(uid: number, id: number) {
+  return db.delete(incomeSources).where(mine(uid, id)).run().changes > 0;
 }

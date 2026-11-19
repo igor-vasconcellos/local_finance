@@ -11,8 +11,9 @@ export const metadata: Metadata = { title: "Configurações" };
 
 export default async function SettingsPage() {
   const { user, expiresAt } = await requireSession();
+  const uid = user.id;
   const today = todayISO();
-  const settings = getSettings();
+  const settings = getSettings(uid);
 
   return (
     <>
@@ -22,8 +23,8 @@ export default async function SettingsPage() {
         sessionExpiresAt={expiresAt}
         mailViaSmtp={mailTransport === "smtp"}
         settings={settings}
-        cdiRates={listCdiRates()}
-        currentCdi={cdiRateOn(today) ?? null}
+        cdiRates={listCdiRates(uid)}
+        currentCdi={cdiRateOn(uid, today) ?? null}
         today={today}
       />
     </>

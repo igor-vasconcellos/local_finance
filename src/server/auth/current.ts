@@ -30,6 +30,11 @@ export async function requireSession(): Promise<ValidSession> {
   return session;
 }
 
+/** Id da conta logada (atalho para as Server Actions e páginas). */
+export async function requireUserId(): Promise<number> {
+  return (await requireSession()).user.id;
+}
+
 export async function getSessionJwt() {
   return (await cookies()).get(SESSION_COOKIE)?.value;
 }

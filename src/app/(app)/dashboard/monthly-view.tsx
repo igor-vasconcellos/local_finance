@@ -26,9 +26,21 @@ import { toggleSettlementAction } from "@/server/actions/overview";
 import { getCategoryReport, getMonthOverview } from "@/server/finance/overview";
 
 /** Visão mensal do painel (resumo, vencimentos, entradas, faturas e categorias). */
-export function MonthlyView({ month, current, today, sim }: { month: Month; current: Month; today: ISODate; sim: boolean }) {
-  const o = getMonthOverview(month, today, { includeSimulations: sim });
-  const report = getCategoryReport(month);
+export function MonthlyView({
+  uid,
+  month,
+  current,
+  today,
+  sim,
+}: {
+  uid: number;
+  month: Month;
+  current: Month;
+  today: ISODate;
+  sim: boolean;
+}) {
+  const o = getMonthOverview(uid, month, today, { includeSimulations: sim });
+  const report = getCategoryReport(uid, month);
   const t = o.totals;
   const freePct = t.totalIncome > 0 ? (t.forecast / t.totalIncome) * 100 : null;
   const monthLabel = formatMonthLong(month).toLowerCase();

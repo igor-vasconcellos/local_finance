@@ -3,10 +3,11 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { ImportParseError, parseCsvStatement, parsePdfStatement, type ParsedStatement } from "@/lib/import";
-import { requireSession } from "@/server/auth/current";
+import { requireUserId } from "@/server/auth/current";
 import { deleteInvoiceCredit } from "@/server/finance/cards";
 import { extractPdfLines } from "@/server/import/pdf-text";
 import { buildPreview, commitImport, undoImport, type CommitResult, type ImportPreview } from "@/server/import/service";
+import { NotFoundError } from "@/server/finance/owner";
 import { parseId } from "./form-state";
 
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -15,7 +16,7 @@ export type PreviewState = { preview?: ImportPreview; error?: string };
 
 /** 1º passo: lê o arquivo (no próprio computador) e devolve a prévia, sem gravar nada. */
 export async function previewImportAction(fd: FormData): Promise<PreviewState> {
-  await requireSession();
+  const uid = await requireUserId();
   const cardId = parseId(fd.get("cardId"));
   const file = fd.get("file");
   if (!cardId) return { error: "Cartão inválido." };
@@ -34,7 +35,7 @@ export async function previewImportAction(fd: FormData): Promise<PreviewState> {
     else return { error: "Envie a fatura em PDF ou CSV." };
 
     if (!statement.lines.length) return { error: "Não encontrei lançamentos neste arquivo." };
-    return { preview: buildPreview(cardId, name, statement) };
+    return { preview: buildPreview(uid, cardId, name, statement) };
   } catch (error) {
     if (error instanceof ImportParseError) return { error: error.message };
     if (error instanceof Error && error.message === "Cartão não encontrado.") return { error: error.message };
@@ -77,31 +78,32 @@ export type CommitState = { result?: CommitResult; error?: string };
 
 /** 2º passo: grava o que foi conferido na prévia. */
 export async function commitImportAction(payload: unknown): Promise<CommitState> {
-  await requireSession();
+  const uid = await requireUserId();
   const parsed = commitSchema.safeParse(payload);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   try {
-    const result = commitImport(parsed.data);
+    const result = commitImport(uid, parsed.data);
     refresh();
     return { result };
   } catch (error) {
+    if (error instanceof NotFoundError) return { error: error.message };
     console.error("[import] Falha ao importar:", error);
     return { error: "Não foi possível concluir a importação. Nada foi gravado." };
   }
 }
 
 export async function undoImportAction(fd: FormData): Promise<{ error?: string } | void> {
-  await requireSession();
+  const uid = await requireUserId();
   const cardId = parseId(fd.get("cardId"));
   const id = parseId(fd.get("id"));
-  if (!cardId || !id || !undoImport(cardId, id)) return { error: "Importação não encontrada." };
+  if (!cardId || !id || !undoImport(uid, cardId, id)) return { error: "Importação não encontrada." };
   refresh();
 }
 
 export async function deleteCreditAction(fd: FormData): Promise<void> {
-  await requireSession();
+  const uid = await requireUserId();
   const cardId = parseId(fd.get("cardId"));
   const id = parseId(fd.get("id"));
-  if (cardId && id) deleteInvoiceCredit(cardId, id);
+  if (cardId && id) deleteInvoiceCredit(uid, cardId, id);
   refresh();
 }

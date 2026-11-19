@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/db/client";
+import { freshUser } from "./helpers/user";
 import {
   boxTransactions, cardPurchases, categories, creditCards, incomeSources, installments,
   institutions, invoices, monthlySettlements, recurringExpenses, savingsBoxes, settings,
@@ -16,19 +17,22 @@ const M = "2026-12";
 const TODAY = "2026-12-12";
 let moradia: number;
 
+let uid = 0;
+
 beforeEach(() => {
+  uid = freshUser();
   for (const t of [monthlySettlements, installments, cardPurchases, invoices, creditCards, boxTransactions, savingsBoxes, institutions, incomeSources, recurringExpenses, settings]) db.delete(t).run();
   db.delete(categories).run();
-  moradia = db.insert(categories).values({ name: "Moradia", kind: "expense", color: "#8b5cf6" }).returning().get().id;
+  moradia = db.insert(categories).values({ userId: uid, name: "Moradia", kind: "expense", color: "#8b5cf6" }).returning().get().id;
 });
 
 function seed() {
-  const salary = createIncome({ recurrence: "monthly", payDay: 5, startMonth: "2026-11", endMonth: null, name: "Salário", type: "salary", amount: 1000000, categoryId: null, notes: null });
-  createIncome({ recurrence: "once", payDate: "2026-12-20", name: "Bônus", type: "extra", amount: 200000, categoryId: null, notes: null });
-  const rent = createExpense({ name: "Aluguel", categoryId: moradia, amount: 300000, dueDay: 10, startMonth: "2026-11", endMonth: null, notes: null });
-  createExpense({ name: "Condomínio", categoryId: moradia, amount: 80000, dueDay: 15, startMonth: "2026-11", endMonth: null, notes: null });
-  const card = createCard({ name: "Nubank", institution: "Nubank", limit: 1000000, closingDay: 3, dueDay: 10, color: "#7c3aed" });
-  createPurchase({ cardId: card.id, description: "TV", categoryId: null, total: 120000, installmentsCount: 2, purchaseDate: "2026-11-20", notes: null });
+  const salary = createIncome(uid, { recurrence: "monthly", payDay: 5, startMonth: "2026-11", endMonth: null, name: "Salário", type: "salary", amount: 1000000, categoryId: null, notes: null });
+  createIncome(uid, { recurrence: "once", payDate: "2026-12-20", name: "Bônus", type: "extra", amount: 200000, categoryId: null, notes: null });
+  const rent = createExpense(uid, { name: "Aluguel", categoryId: moradia, amount: 300000, dueDay: 10, startMonth: "2026-11", endMonth: null, notes: null });
+  createExpense(uid, { name: "Condomínio", categoryId: moradia, amount: 80000, dueDay: 15, startMonth: "2026-11", endMonth: null, notes: null });
+  const card = createCard(uid, { name: "Nubank", institution: "Nubank", limit: 1000000, closingDay: 3, dueDay: 10, color: "#7c3aed" });
+  createPurchase(uid, { cardId: card.id, description: "TV", categoryId: null, total: 120000, installmentsCount: 2, purchaseDate: "2026-11-20", notes: null });
   return { salary, rent, card };
 }
 
@@ -44,23 +48,23 @@ describe("taxas CDI", () => {
 
   it("histórico: taxa vigente por data e nunca apaga a última", async () => {
     db.delete((await import("@/db/schema")).cdiRates).run();
-    setCdiRate(1365, "2026-11-05");
-    setCdiRate(1400, "2027-01-01");
-    expect(cdiRateOn("2026-12-01")?.annualRateBp).toBe(1365);
-    expect(cdiRateOn("2027-02-01")?.annualRateBp).toBe(1400);
-    expect(cdiRateOn("2020-01-01")?.annualRateBp).toBe(1365); // antes de tudo: a mais antiga
-    setCdiRate(1410, "2027-01-01"); // mesma data substitui
-    expect(listCdiRates()).toHaveLength(2);
-    const [a, b] = listCdiRates();
-    expect(deleteCdiRate(a.id)).toBe(true);
-    expect(deleteCdiRate(b.id)).toBe(false);
+    setCdiRate(uid, 1365, "2026-11-05");
+    setCdiRate(uid, 1400, "2027-01-01");
+    expect(cdiRateOn(uid, "2026-12-01")?.annualRateBp).toBe(1365);
+    expect(cdiRateOn(uid, "2027-02-01")?.annualRateBp).toBe(1400);
+    expect(cdiRateOn(uid, "2020-01-01")?.annualRateBp).toBe(1365); // antes de tudo: a mais antiga
+    setCdiRate(uid, 1410, "2027-01-01"); // mesma data substitui
+    expect(listCdiRates(uid)).toHaveLength(2);
+    const [a, b] = listCdiRates(uid);
+    expect(deleteCdiRate(uid, a.id)).toBe(true);
+    expect(deleteCdiRate(uid, b.id)).toBe(false);
   });
 });
 
 describe("painel do mês", () => {
   it("tudo pendente: recebido 0, a receber e a pagar completos", () => {
     seed();
-    const o = getMonthOverview(M, TODAY);
+    const o = getMonthOverview(uid, M, TODAY);
     expect(o.totals).toMatchObject({ received: 0, toReceive: 1200000, paid: 0, toPay: 300000 + 80000 + 60000 });
     expect(o.totals.forecast).toBe(1200000 - 440000);
     expect(o.payables.map((p) => p.date)).toEqual(["2026-12-10", "2026-12-10", "2026-12-15"]);
@@ -69,10 +73,10 @@ describe("painel do mês", () => {
 
   it("confirmar recebimento e pagamentos move os valores sem mudar a previsão", () => {
     const { salary, rent, card } = seed();
-    setSettled("income", salary.id, M, true);
-    setSettled("expense", rent.id, M, true);
-    setInvoicePaid(card.id, M, true);
-    const o = getMonthOverview(M, TODAY);
+    setSettled(uid, "income", salary.id, M, true);
+    setSettled(uid, "expense", rent.id, M, true);
+    setInvoicePaid(uid, card.id, M, true);
+    const o = getMonthOverview(uid, M, TODAY);
     expect(o.totals).toMatchObject({ received: 1000000, toReceive: 200000, paid: 360000, toPay: 80000 });
     expect(o.totals.realized).toBe(640000);
     expect(o.totals.forecast).toBe(760000);
@@ -81,24 +85,25 @@ describe("painel do mês", () => {
 
   it("valor confirmado fica congelado mesmo se o gasto mudar depois", () => {
     const { rent } = seed();
-    setSettled("expense", rent.id, M, true);
-    updateExpense(rent.id, { name: "Aluguel", categoryId: moradia, amount: 350000, dueDay: 10, startMonth: "2026-11", endMonth: null, notes: null });
-    expect(getMonthOverview(M, TODAY).totals.paid).toBe(300000);
-    expect(getMonthOverview("2027-01", TODAY).totals.toPay).toBeGreaterThanOrEqual(350000);
-    setSettled("expense", rent.id, M, false);
-    expect(getMonthOverview(M, TODAY).totals.paid).toBe(0);
+    setSettled(uid, "expense", rent.id, M, true);
+    updateExpense(uid, rent.id, { name: "Aluguel", categoryId: moradia, amount: 350000, dueDay: 10, startMonth: "2026-11", endMonth: null, notes: null });
+    expect(getMonthOverview(uid, M, TODAY).totals.paid).toBe(300000);
+    expect(getMonthOverview(uid, "2027-01", TODAY).totals.toPay).toBeGreaterThanOrEqual(350000);
+    setSettled(uid, "expense", rent.id, M, false);
+    expect(getMonthOverview(uid, M, TODAY).totals.paid).toBe(0);
   });
 
   it("patrimônio = saldo em conta + caixinhas − dívidas dos cartões", () => {
     seed();
-    updateAccountBalance(500000, TODAY);
-    const inst = db.insert(institutions).values({ name: "Banco" }).returning().get();
-    const box = db.insert(savingsBoxes).values({ institutionId: inst.id, name: "Reserva", cdiPercentBp: 11500 }).returning().get();
+    setCdiRate(uid, 1365, "2026-01-01");
+    updateAccountBalance(uid, 500000, TODAY);
+    const inst = db.insert(institutions).values({ userId: uid, name: "Banco" }).returning().get();
+    const box = db.insert(savingsBoxes).values({ userId: uid, institutionId: inst.id, name: "Reserva", cdiPercentBp: 11500 }).returning().get();
     db.insert(boxTransactions).values([
       { boxId: box.id, type: "deposit", amountCents: 300000, date: "2026-12-01" },
       { boxId: box.id, type: "withdrawal", amountCents: 50000, date: "2026-12-05" },
     ]).run();
-    const o = getMonthOverview(M, TODAY);
+    const o = getMonthOverview(uid, M, TODAY);
     // reserva agora inclui o rendimento (115% do CDI de 01/12 a 12/12)
     expect(o.totals.reserve).toBeGreaterThan(250000);
     expect(o.totals.reserve).toBeLessThan(252000);
@@ -118,7 +123,7 @@ describe("painel do mês", () => {
 describe("relatório por categoria", () => {
   it("junta gastos fixos e parcelas do cartão do mês, ordenado por valor", () => {
     seed();
-    const r = getCategoryReport(M);
+    const r = getCategoryReport(uid, M);
     expect(r.rows.map((x) => [x.name, x.totalCents])).toEqual([
       ["Moradia", 380000],
       ["Sem categoria", 60000],
