@@ -5,19 +5,13 @@ import { ShieldCheck } from "lucide-react";
 import { AuthCard } from "@/components/auth/auth-card";
 import { Alert } from "@/components/ui/alert";
 import { mailTransport } from "@/env";
+import { maskEmail } from "@/lib/mask";
 import { getPendingChallengeId } from "@/server/auth/current";
 import { getResendTarget } from "@/server/auth/two-factor";
 import { getUserById } from "@/server/auth/users";
 import { VerifyForm } from "./verify-form";
 
 export const metadata: Metadata = { title: "Verificação" };
-
-/** igor.vasconcellos@gmail.com → ig•••••••••••••@gmail.com */
-function maskEmail(email: string) {
-  const [local, domain] = email.split("@");
-  if (!domain) return email;
-  return `${local.slice(0, 2)}${"•".repeat(Math.max(3, local.length - 2))}@${domain}`;
-}
 
 export default async function VerifyPage({ searchParams }: PageProps<"/verify">) {
   await connection();

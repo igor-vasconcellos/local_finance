@@ -8,6 +8,13 @@
       "when": 1795031021080,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1795045716097,
+      "tag": "0001_settlements_and_balance",
+      "breakpoints": true
     }
   ]
 }

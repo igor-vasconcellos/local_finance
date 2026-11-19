@@ -9,6 +9,9 @@ export const settings = sqliteTable(
     id: integer("id").primaryKey(),
     greenThresholdBp: integer("green_threshold_bp").notNull().default(2000), // > 20% = Verde
     yellowThresholdBp: integer("yellow_threshold_bp").notNull().default(500), // 5–20% = Amarelo
+    // Saldo da conta corrente informado pelo usuário (entra no patrimônio líquido).
+    accountBalanceCents: integer("account_balance_cents"),
+    accountBalanceDate: text("account_balance_date"),
     updatedAt: updatedAt(),
   },
   (t) => [

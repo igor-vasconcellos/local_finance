@@ -1,6 +1,7 @@
 import {
   Calculator,
   CreditCard,
+  FileBarChart,
   LayoutDashboard,
   PiggyBank,
   Receipt,
@@ -12,7 +13,12 @@ import {
 export type NavItem = { href: string; label: string; icon: LucideIcon; soon?: boolean };
 
 export const NAV_SECTIONS: { title?: string; items: NavItem[] }[] = [
-  { items: [{ href: "/dashboard", label: "Visão geral", icon: LayoutDashboard }] },
+  {
+    items: [
+      { href: "/dashboard", label: "Visão geral", icon: LayoutDashboard },
+      { href: "/relatorios", label: "Relatórios", icon: FileBarChart },
+    ],
+  },
   {
     title: "Planejamento",
     items: [
@@ -26,7 +32,10 @@ export const NAV_SECTIONS: { title?: string; items: NavItem[] }[] = [
     items: [
       { href: "/caixinhas", label: "Caixinhas", icon: PiggyBank, soon: true },
       { href: "/simulador", label: "Simulador", icon: Calculator, soon: true },
-      { href: "/configuracoes", label: "Configurações", icon: Settings, soon: true },
     ],
+  },
+  {
+    title: "Sistema",
+    items: [{ href: "/configuracoes", label: "Configurações", icon: Settings }],
   },
 ];

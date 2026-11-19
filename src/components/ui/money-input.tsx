@@ -4,7 +4,18 @@ import { useState, type ComponentProps } from "react";
 import { formatAmount, parseBRL } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
-/** Campo de valor em reais: aceita "1234,5" e formata para "1.234,50" ao sair do campo. */
+const MAX_DIGITS = 12; // até R$ 9.999.999.999,99
+
+/** "1.234,56" | "" → "123456" (só dígitos, sem zeros à esquerda) */
+function toDigits(text: string): string {
+  return text.replace(/\D/g, "").replace(/^0+/, "").slice(0, MAX_DIGITS);
+}
+
+/**
+ * Campo de valor em reais com máscara automática, como nos apps de banco:
+ * basta digitar os números — 1 → 0,01 · 12 → 0,12 · 1234 → 12,34 · 123456 → 1.234,56.
+ * Backspace apaga o último dígito. O valor enviado no formulário é "1.234,56".
+ */
 export function MoneyInput({
   defaultValue,
   className,
@@ -14,7 +25,17 @@ export function MoneyInput({
   defaultValue?: string;
   onValueChange?: (cents: number | null) => void;
 }) {
-  const [value, setValue] = useState(defaultValue ?? "");
+  const [digits, setDigits] = useState(() => {
+    const cents = defaultValue ? parseBRL(defaultValue) : null;
+    return cents && cents > 0 ? String(cents) : "";
+  });
+
+  const display = digits ? formatAmount(Number(digits)) : "";
+
+  const update = (next: string) => {
+    setDigits(next);
+    onValueChange?.(next ? Number(next) : null);
+  };
 
   return (
     <div className="relative">
@@ -24,18 +45,29 @@ export function MoneyInput({
       <input
         {...props}
         type="text"
-        inputMode="decimal"
+        inputMode="numeric"
         autoComplete="off"
-        value={value}
-        onChange={(e) => {
-          const next = e.target.value.replace(/[^\d.,]/g, "");
-          setValue(next);
-          onValueChange?.(parseBRL(next));
+        value={display}
+        onChange={(e) => update(toDigits(e.target.value))}
+        onKeyDown={(e) => {
+          // Backspace/Delete: com texto selecionado limpa o campo; senão remove o último dígito.
+          if (e.key === "Backspace" || e.key === "Delete") {
+            e.preventDefault();
+            const el = e.currentTarget;
+            const hasSelection = el.selectionStart !== null && el.selectionStart !== el.selectionEnd;
+            update(hasSelection ? "" : digits.slice(0, -1));
+          }
+          props.onKeyDown?.(e);
         }}
-        onBlur={(e) => {
-          const cents = parseBRL(value);
-          if (cents !== null) setValue(formatAmount(cents));
-          props.onBlur?.(e);
+        onFocus={(e) => {
+          const el = e.currentTarget;
+          requestAnimationFrame(() => el.setSelectionRange(el.value.length, el.value.length));
+          props.onFocus?.(e);
+        }}
+        onClick={(e) => {
+          const el = e.currentTarget;
+          el.setSelectionRange(el.value.length, el.value.length);
+          props.onClick?.(e);
         }}
         placeholder={props.placeholder ?? "0,00"}
         className={cn(

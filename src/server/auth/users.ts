@@ -104,3 +104,7 @@ export async function authenticate(
 
   return { ok: true, user: { id: user.id, name: user.name, email: user.email } };
 }
+
+export function updateUserName(id: number, name: string): boolean {
+  return db.update(users).set({ name: name.trim() }).where(eq(users.id, id)).run().changes > 0;
+}

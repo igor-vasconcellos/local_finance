@@ -64,6 +64,28 @@ reinicie o servidor. Se o SMTP falhar, o código é impresso no terminal como fa
 - **Limite comprometido** = tudo o que ainda não foi pago, incluindo parcelas futuras.
   Marcar uma fatura como paga libera o limite correspondente.
 
+### Visão geral, relatórios e configurações
+
+- **Visão geral** — resumo do mês (navegue com ← →): total recebido, despesas pagas,
+  a receber, a pagar, reserva (caixinhas), patrimônio líquido e a **previsão do mês**
+  (realizado + a receber − a pagar − metas), com o farol de saúde. Lista os próximos
+  vencimentos, as entradas e as faturas do mês.
+- **Recebido / pago é confirmado por você**: clique em “Recebi” ou “Pagar” em cada item
+  (e “Desfazer” se precisar). O valor confirmado fica guardado mesmo se a renda/gasto
+  mudar depois. Faturas de cartão usam o mesmo botão.
+- **Patrimônio líquido** = saldo em conta (informado em Configurações) + caixinhas −
+  tudo o que falta pagar nos cartões.
+- **Relatórios** — gastos do mês por categoria (fixos + parcelas de cartão + avulsos),
+  com detalhamento de cada item.
+- **Configurações** — nome, saldo em conta, taxa CDI (informe **por mês** como no app do
+  banco ou por ano; o app mostra a equivalência e guarda o histórico) e limites do farol.
+- **Valores em dinheiro**: digite só os números — `123456` vira `1.234,56`.
+
+### Atualizações
+
+Depois de `git pull`, basta rodar `npm run dev`: o banco é atualizado sozinho ao
+iniciar (migrações automáticas), sem perder dados.
+
 ### Esqueci minha senha
 
 Como o app é local, a recuperação é feita pelo terminal do próprio computador:
