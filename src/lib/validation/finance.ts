@@ -148,3 +148,53 @@ export type IncomeInput = z.infer<typeof incomeSchema>;
 export type ExpenseInput = z.infer<typeof expenseSchema>;
 export type CardInput = z.infer<typeof cardSchema>;
 export type PurchaseInput = z.infer<typeof purchaseSchema>;
+
+// --------------------------------------------------------------- Caixinhas --
+
+export const BOX_COLORS = ["#7c3aed", "#059669", "#0284c7", "#e11d48", "#ea580c", "#ca8a04", "#db2777", "#334155"] as const;
+
+const optionalMoney = z
+  .string()
+  .trim()
+  .transform((v, ctx) => {
+    if (v === "") return null;
+    const cents = parseBRL(v);
+    if (cents === null || cents <= 0) {
+      ctx.addIssue({ code: "custom", message: "Valor inválido." });
+      return z.NEVER;
+    }
+    return cents;
+  });
+
+export const boxSchema = z
+  .object({
+    name: name("o nome da caixinha"),
+    institution: z.string().trim().min(1, "Informe o banco.").max(60, "Máximo de 60 caracteres."),
+    cdiPercent: z.string().transform((v, ctx) => {
+      const n = Number(v.replace("%", "").replace(",", ".").trim());
+      if (!Number.isFinite(n) || n <= 0 || n > 500) {
+        ctx.addIssue({ code: "custom", message: "Informe o % do CDI (ex.: 100, 115)." });
+        return z.NEVER;
+      }
+      return Math.round(n * 100); // basis points
+    }),
+    goal: optionalMoney,
+    goalDate: z
+      .string()
+      .trim()
+      .transform((v) => (v === "" ? null : v))
+      .pipe(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida.").nullable()),
+    color: z.enum(BOX_COLORS).catch(BOX_COLORS[0]),
+  })
+  .refine((d) => !d.goalDate || d.goal, { path: ["goal"], message: "Informe o valor da meta para usar uma data." });
+
+export const boxTxSchema = z.object({
+  boxId: z.coerce.number().int().positive(),
+  type: z.enum(["deposit", "withdrawal"]),
+  amount: moneyField(),
+  date: dateField,
+  notes,
+});
+
+export type BoxInput = z.infer<typeof boxSchema>;
+export type BoxTxInput = z.infer<typeof boxTxSchema>;

@@ -81,6 +81,18 @@ reinicie o servidor. Se o SMTP falhar, o código é impresso no terminal como fa
   banco ou por ano; o app mostra a equivalência e guarda o histórico) e limites do farol.
 - **Valores em dinheiro**: digite só os números — `123456` vira `1.234,56`.
 
+### Caixinhas (Etapa 4)
+
+- Cada caixinha tem banco, **% do CDI** (ex.: 115) e meta opcional (valor + data).
+- Aportes e resgates com data; resgates nunca deixam o saldo negativo.
+- **Rendimento**: capitalização diária em dias úteis (seg–sex, base 252), usando o
+  histórico de CDI das Configurações — mudar a taxa não altera o passado. Valores
+  brutos (sem IR/IOF); pode diferir alguns centavos do banco por causa de feriados.
+- **Metas com data**: o app calcula quanto guardar por mês (já considerando o
+  rendimento) e mostra a projeção de 12 meses no gráfico.
+- No painel, **Reserva** = total das caixinhas com rendimento, e **Metas** na previsão
+  do mês = o que você guardou no mês + o que ainda falta guardar para seguir as metas.
+
 ### Atualizações
 
 Depois de `git pull`, basta rodar `npm run dev`: o banco é atualizado sozinho ao
@@ -169,6 +181,6 @@ Ao acessar por HTTPS, ajuste no `.env`: `APP_URL=<url https>` e `COOKIE_SECURE=t
 - [x] **Etapa 1** — Setup, estrutura, schema SQLite, `.env`
 - [x] **Etapa 2** — Cadastro do usuário master + login com 2FA (SMTP / console)
 - [x] **Etapa 3** — Layout (sidebar, dark mode) + CRUD de rendas, gastos, cartões e parcelas
-- [ ] **Etapa 4** — Caixinhas com rendimento CDI e histórico de aportes
+- [x] **Etapa 4** — Caixinhas com rendimento CDI e histórico de aportes
 - [ ] **Etapa 5** — Simulador (crédito e débito) + farol + efetivação
 - [ ] **Etapa 6** — Dashboards mensal / semestral / anual, real vs. simulado

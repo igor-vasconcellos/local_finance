@@ -71,7 +71,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
             <Formula label="Realizado" value={t.realized} sign="" />
             <Formula label="A receber" value={t.toReceive} sign="+" />
             <Formula label="A pagar" value={t.toPay} sign="−" />
-            <Formula label="Metas" value={t.goals} sign="−" hint="Etapa 4" />
+            <Formula label={t.goals < 0 ? "Resgates" : "Metas"} value={Math.abs(t.goals)} sign={t.goals < 0 ? "+" : "−"} />
           </dl>
         </div>
       </Card>
@@ -82,7 +82,27 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         <Kpi label="Despesas pagas" value={t.paid} icon={<ArrowUpCircle />} tone="danger" hint={`de ${formatBRL(t.paid + t.toPay)} no mês`} />
         <Kpi label="A receber" value={t.toReceive} icon={<CalendarClock />} hint={plural(o.incomes.filter((i) => !i.settled).length, "entrada pendente", "entradas pendentes")} />
         <Kpi label="A pagar" value={t.toPay} icon={<CircleDollarSign />} hint={plural(o.payables.length, "conta pendente", "contas pendentes")} />
-        <Kpi label="Reserva (cofrinho)" value={t.reserve} icon={<PiggyBank />} tone="primary" hint="Total nas caixinhas hoje" />
+        <Kpi
+          label="Reserva (cofrinho)"
+          value={t.reserve}
+          icon={<PiggyBank />}
+          tone="primary"
+          hint={
+            o.goals.saved !== 0 || o.goals.planned !== 0 ? (
+              `Este mês: ${[
+                o.goals.saved > 0 && `${formatBRL(o.goals.saved)} guardados`,
+                o.goals.saved < 0 && `${formatBRL(-o.goals.saved)} resgatados`,
+                o.goals.planned > 0 && `${formatBRL(o.goals.planned)} a guardar`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}`
+            ) : (
+              <Link href="/caixinhas" className="text-primary hover:underline">
+                Total nas caixinhas hoje →
+              </Link>
+            )
+          }
+        />
         <Kpi
           label="Patrimônio líquido"
           value={t.netWorth}

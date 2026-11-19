@@ -2,7 +2,6 @@ import "server-only";
 import { and, eq, gte, lte, ne, sql, sum } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
-  boxTransactions,
   cardPurchases,
   categories,
   creditCards,
@@ -11,6 +10,7 @@ import {
   oneTimeExpenses,
 } from "@/db/schema";
 import { dayOfMonth, todayISO, type ISODate, type Month } from "@/lib/dates";
+import { goalsForMonth, totalReserve } from "./boxes";
 import { invoiceStatus, type InvoiceStatus } from "./cards";
 import { expenseAppliesTo, listExpenses } from "./expenses";
 import { incomeAppliesTo, listIncomes } from "./incomes";
@@ -67,18 +67,6 @@ function monthInvoices(month: Month, today: ISODate): MonthInvoice[] {
     .map((i) => ({ ...i, status: invoiceStatus(i, today) }));
 }
 
-/** Total guardado nas caixinhas até a data (aportes − resgates). Rendimento entra na Etapa 4. */
-function reserveOn(date: ISODate): number {
-  const row = db
-    .select({
-      total: sql<number>`coalesce(sum(case when ${boxTransactions.type} = 'deposit' then ${boxTransactions.amountCents} else -${boxTransactions.amountCents} end), 0)`.mapWith(Number),
-    })
-    .from(boxTransactions)
-    .where(lte(boxTransactions.date, date))
-    .get();
-  return row?.total ?? 0;
-}
-
 /** Tudo que falta pagar nos cartões (parcelas em faturas não pagas, inclusive futuras). */
 function cardDebts(): number {
   const row = db
@@ -104,11 +92,6 @@ function oneTimeInMonth(month: Month) {
     .leftJoin(categories, eq(categories.id, oneTimeExpenses.categoryId))
     .where(and(gte(oneTimeExpenses.date, `${month}-01`), lte(oneTimeExpenses.date, `${month}-31`)))
     .all();
-}
-
-/** Contribuição planejada para metas (caixinhas) no mês — chega na Etapa 4. */
-function monthlyGoals(_month: Month): number {
-  return 0;
 }
 
 export function healthOf(freeCents: number, incomeCents: number, greenBp: number, yellowBp: number): Health {
@@ -164,7 +147,8 @@ export function getMonthOverview(month: Month, today: ISODate = todayISO()) {
     sumOf(expenses.filter((e) => !e.settled)) +
     sumOf(cardInvoices.filter((i) => i.status !== "paid")) +
     sumOf(oneTime.filter((o) => o.date > today));
-  const goals = monthlyGoals(month);
+  const goalPlan = goalsForMonth(month, today);
+  const goals = goalPlan.total;
   const realized = received - paid;
   const forecast = realized + toReceive - toPay - goals;
 
@@ -173,7 +157,7 @@ export function getMonthOverview(month: Month, today: ISODate = todayISO()) {
   const health = healthOf(forecast, totalIncome, settings.greenThresholdBp, settings.yellowThresholdBp);
 
   // Posição atual (não depende do mês selecionado).
-  const reserve = reserveOn(today);
+  const reserve = totalReserve(today);
   const debts = cardDebts();
   const netWorth = (settings.accountBalanceCents ?? 0) + reserve - debts;
 
@@ -194,6 +178,7 @@ export function getMonthOverview(month: Month, today: ISODate = todayISO()) {
   return {
     month,
     totals: { received, toReceive, paid, toPay, goals, realized, forecast, totalIncome, reserve, debts, netWorth },
+    goals: goalPlan,
     health,
     thresholds: { greenBp: settings.greenThresholdBp, yellowBp: settings.yellowThresholdBp },
     accountBalance: { cents: settings.accountBalanceCents, date: settings.accountBalanceDate },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
+import { Alert } from "./alert";
 import { Button } from "./button";
 import { Dialog } from "./dialog";
 
@@ -17,7 +18,7 @@ export function ConfirmAction({
   tone = "danger",
   trigger,
 }: {
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<void | { error?: string }>;
   fields: Record<string, string | number>;
   title: string;
   description?: ReactNode;
@@ -27,20 +28,33 @@ export function ConfirmAction({
 }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   const confirm = () => {
     const fd = new FormData();
     for (const [k, v] of Object.entries(fields)) fd.set(k, String(v));
     startTransition(async () => {
-      await action(fd);
+      const result = await action(fd);
+      if (result && result.error) {
+        setError(result.error);
+        return;
+      }
       setOpen(false);
     });
   };
 
   return (
     <>
-      {trigger(() => setOpen(true))}
+      {trigger(() => {
+        setError(null);
+        setOpen(true);
+      })}
       <Dialog open={open} onClose={() => !pending && setOpen(false)} title={title} description={description}>
+        {error && (
+          <Alert tone="danger" className="mb-4">
+            {error}
+          </Alert>
+        )}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setOpen(false)} disabled={pending}>
             Cancelar

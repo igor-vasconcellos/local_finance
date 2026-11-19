@@ -99,9 +99,11 @@ describe("painel do mês", () => {
       { boxId: box.id, type: "withdrawal", amountCents: 50000, date: "2026-12-05" },
     ]).run();
     const o = getMonthOverview(M, TODAY);
-    expect(o.totals.reserve).toBe(250000);
+    // reserva agora inclui o rendimento (115% do CDI de 01/12 a 12/12)
+    expect(o.totals.reserve).toBeGreaterThan(250000);
+    expect(o.totals.reserve).toBeLessThan(252000);
     expect(o.totals.debts).toBe(120000);
-    expect(o.totals.netWorth).toBe(500000 + 250000 - 120000);
+    expect(o.totals.netWorth).toBe(500000 + o.totals.reserve - 120000);
   });
 
   it("farol usa os limites configurados", () => {
