@@ -143,6 +143,22 @@ Define uma nova senha, desbloqueia o login e encerra todas as sessões abertas.
 
 ---
 
+## Uso no Windows sem terminal
+
+Na pasta do projeto há três atalhos (duplo clique, **sem** precisar de administrador):
+
+| Arquivo | O que faz |
+|---|---|
+| `iniciar.bat` | Sobe o servidor (janela minimizada) e abre o app no navegador. Na primeira vez também instala e prepara tudo. Se já estiver aberto, só abre o navegador. |
+| `parar.bat` | Desliga o servidor. |
+| `atualizar.bat` | Baixa a versão nova do GitHub (`git pull`), instala e prepara. Seus dados e o `.env` não mudam. |
+
+Dica: clique com o botão direito em `iniciar.bat` → **Enviar para → Área de trabalho (criar atalho)**.
+Para abrir junto com o Windows, coloque um atalho em `shell:startup` (Win + R).
+
+> Evite deixar o projeto dentro de **Documentos** ou do **OneDrive** (proteção de pastas e
+> sincronização podem bloquear o Git ou corromper o banco). Prefira algo como `C:\Projetos`.
+
 ## Comandos
 
 | Comando | O que faz |
