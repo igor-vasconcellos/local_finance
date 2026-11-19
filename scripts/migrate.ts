@@ -12,6 +12,8 @@ async function main() {
 }
 
 main().catch((error) => {
+  const cause = (error as { cause?: { message?: string; code?: string } }).cause;
   console.error("❌", error instanceof Error ? error.message : error);
+  if (cause) console.error("   Motivo:", cause.code ?? "", cause.message ?? cause);
   process.exit(1);
 });
