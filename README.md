@@ -105,6 +105,18 @@ reinicie o servidor. Se o SMTP falhar, o código é impresso no terminal como fa
 - **Efetivar** transforma a simulação em lançamento real: no crédito vira compra no
   cartão; no débito vira um gasto avulso (listado em Gastos fixos → Gastos avulsos).
 
+### Dashboards (Etapa 6)
+
+- **Visão geral** com três abas:
+  - **Mensal** — resumo do mês, vencimentos, entradas, faturas e categorias;
+  - **Semestral** (6 meses) e **Anual** (12 meses) — fluxo de caixa previsto com gráfico
+    (entradas × saídas e linha do saldo livre) e tabela lado a lado, totais do período e
+    farol de cada mês. Clique num mês da tabela para abrir a visão mensal dele.
+- **Mostrar simulações** — interruptor que inclui as simulações marcadas no Simulador
+  em todas as visões, para comparar o cenário real × simulado (linha tracejada no
+  gráfico, coluna “Simulações” na tabela e parcelas “Simulado” nos vencimentos).
+- A navegação ← → anda 1, 6 ou 12 meses conforme a aba; “Hoje” volta ao período atual.
+
 ### Atualizações
 
 Depois de `git pull`, basta rodar `npm run dev`: o banco é atualizado sozinho ao
@@ -195,4 +207,4 @@ Ao acessar por HTTPS, ajuste no `.env`: `APP_URL=<url https>` e `COOKIE_SECURE=t
 - [x] **Etapa 3** — Layout (sidebar, dark mode) + CRUD de rendas, gastos, cartões e parcelas
 - [x] **Etapa 4** — Caixinhas com rendimento CDI e histórico de aportes
 - [x] **Etapa 5** — Simulador (crédito e débito) + farol + efetivação
-- [ ] **Etapa 6** — Dashboards mensal / semestral / anual, real vs. simulado
+- [x] **Etapa 6** — Dashboards mensal / semestral / anual, real vs. simulado

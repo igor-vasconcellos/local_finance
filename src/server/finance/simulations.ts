@@ -1,5 +1,5 @@
 import "server-only";
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { categories, creditCards, oneTimeExpenses, simulationInstallments, simulations } from "@/db/schema";
 import type { Month } from "@/lib/dates";
@@ -133,4 +133,34 @@ export function effectivateSimulation(id: number): SimResult {
       .run();
   });
   return { ok: true, id: sim.id };
+}
+
+export type SimulatedItem = {
+  simulationId: number;
+  description: string;
+  paymentMethod: "credit" | "debit";
+  cardName: string | null;
+  number: number;
+  count: number;
+  amountCents: number;
+};
+
+/** Parcelas simuladas (ativas e marcadas para o cenário) que caem no mês. */
+export function simulatedItemsForMonth(month: Month): SimulatedItem[] {
+  return db
+    .select({
+      simulationId: simulations.id,
+      description: simulations.description,
+      paymentMethod: simulations.paymentMethod,
+      cardName: creditCards.name,
+      number: simulationInstallments.number,
+      count: simulations.installmentsCount,
+      amountCents: simulationInstallments.amountCents,
+    })
+    .from(simulationInstallments)
+    .innerJoin(simulations, eq(simulations.id, simulationInstallments.simulationId))
+    .leftJoin(creditCards, eq(creditCards.id, simulations.cardId))
+    .where(and(eq(simulationInstallments.referenceMonth, month), eq(simulations.status, "active"), eq(simulations.isVisible, true)))
+    .orderBy(asc(simulations.purchaseDate))
+    .all();
 }

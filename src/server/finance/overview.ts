@@ -16,6 +16,7 @@ import { expenseAppliesTo, listExpenses } from "./expenses";
 import { incomeAppliesTo, listIncomes } from "./incomes";
 import { getSettings } from "./settings";
 import { listSettlements } from "./settlements";
+import { simulatedItemsForMonth } from "./simulations";
 
 import { healthOf, type Health } from "@/lib/health";
 
@@ -96,7 +97,7 @@ function oneTimeInMonth(month: Month) {
     .all();
 }
 
-export function getMonthOverview(month: Month, today: ISODate = todayISO()) {
+export function getMonthOverview(month: Month, today: ISODate = todayISO(), opts: { includeSimulations?: boolean } = {}) {
   const settled = listSettlements(month);
   const settledIncome = new Map(settled.filter((s) => s.incomeId).map((s) => [s.incomeId!, s.amountCents]));
   const settledExpense = new Map(settled.filter((s) => s.expenseId).map((s) => [s.expenseId!, s.amountCents]));
@@ -144,7 +145,9 @@ export function getMonthOverview(month: Month, today: ISODate = todayISO()) {
   const goalPlan = goalsForMonth(month, today);
   const goals = goalPlan.total;
   const realized = received - paid;
-  const forecast = realized + toReceive - toPay - goals;
+  const simulatedItems = opts.includeSimulations ? simulatedItemsForMonth(month) : [];
+  const simulated = simulatedItems.reduce((a, s) => a + s.amountCents, 0);
+  const forecast = realized + toReceive - toPay - goals - simulated;
 
   const settings = getSettings();
   const totalIncome = received + toReceive;
@@ -171,7 +174,8 @@ export function getMonthOverview(month: Month, today: ISODate = todayISO()) {
 
   return {
     month,
-    totals: { received, toReceive, paid, toPay, goals, realized, forecast, totalIncome, reserve, debts, netWorth },
+    totals: { received, toReceive, paid, toPay, goals, simulated, realized, forecast, totalIncome, reserve, debts, netWorth },
+    simulatedItems,
     goals: goalPlan,
     health,
     thresholds: { greenBp: settings.greenThresholdBp, yellowBp: settings.yellowThresholdBp },
