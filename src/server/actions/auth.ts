@@ -15,6 +15,7 @@ import {
   setSessionCookie,
 } from "@/server/auth/current";
 import { checkEmailDomain } from "@/server/auth/email-domain";
+import { limitByIp } from "@/server/auth/rate-limit";
 import { createSession, revokeSession } from "@/server/auth/sessions";
 import {
   createChallenge,
@@ -46,11 +47,14 @@ const str = (fd: FormData, key: string) => {
 };
 
 const formatTime = (iso: string) =>
-  new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  new Date(iso).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
 /** Gera um novo desafio, envia o código e grava o cookie de pré-autenticação. */
 async function issueChallenge(user: { id: number; name: string; email: string }, purpose: ChallengePurpose) {
-  const challenge = createChallenge(user.id, new Date(), purpose);
+  const challenge = await createChallenge(user.id, new Date(), purpose);
   const delivery = await sendTwoFactorCode({
     to: user.email,
     name: user.name,
@@ -98,24 +102,43 @@ export async function signupAction(_prev: FormState, formData: FormData): Promis
   });
   if (!parsed.success) return { fields: fieldErrors(parsed.error), values };
 
+  const limitedSignup = await limitByIp("signup");
+  if (limitedSignup) return { error: limitedSignup, values };
+
   const domain = await checkEmailDomain(parsed.data.email);
   if (domain === "disposable") {
-    return { fields: { email: "E-mails temporários não são aceitos. Use seu e-mail pessoal." }, values };
+    return {
+      fields: {
+        email: "E-mails temporários não são aceitos. Use seu e-mail pessoal.",
+      },
+      values,
+    };
   }
   if (domain === "no_mail_server") {
-    return { fields: { email: "Este domínio não recebe e-mails. Confira se o endereço está certo." }, values };
+    return {
+      fields: {
+        email: "Este domínio não recebe e-mails. Confira se o endereço está certo.",
+      },
+      values,
+    };
   }
 
   const result = await registerUser(parsed.data);
   if (!result.ok) {
     return {
-      fields: { email: "Já existe uma conta com este e-mail. Entre ou use “Esqueci minha senha”." },
+      fields: {
+        email: "Já existe uma conta com este e-mail. Entre ou use “Esqueci minha senha”.",
+      },
       values,
     };
   }
 
-  const wait = sendCooldown(result.user.id, "signup");
-  if (wait > 0) return { error: `Acabamos de enviar um código para este e-mail. Aguarde ${wait}s para pedir outro.`, values };
+  const wait = await sendCooldown(result.user.id, "signup");
+  if (wait > 0)
+    return {
+      error: `Acabamos de enviar um código para este e-mail. Aguarde ${wait}s para pedir outro.`,
+      values,
+    };
 
   let delivery;
   try {
@@ -130,8 +153,14 @@ export async function signupAction(_prev: FormState, formData: FormData): Promis
 
 export async function loginAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const values = { email: str(formData, "email") };
-  const parsed = loginSchema.safeParse({ ...values, password: str(formData, "password") });
+  const parsed = loginSchema.safeParse({
+    ...values,
+    password: str(formData, "password"),
+  });
   if (!parsed.success) return { fields: fieldErrors(parsed.error), values };
+
+  const limitedLogin = await limitByIp("login");
+  if (limitedLogin) return { error: limitedLogin, values };
 
   const result = await authenticate(parsed.data.email, parsed.data.password);
 
@@ -163,7 +192,10 @@ export async function verifyAction(_prev: FormState, formData: FormData): Promis
   const parsed = verifySchema.safeParse({ code: str(formData, "code") });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
 
-  const result = verifyChallenge(await getPendingChallengeId(), parsed.data.code);
+  const limitedCode = await limitByIp("code");
+  if (limitedCode) return { error: limitedCode };
+
+  const result = await verifyChallenge(await getPendingChallengeId(), parsed.data.code);
   if (!result.ok) {
     const message = codeError(result);
     if (message) return { error: message };
@@ -171,20 +203,22 @@ export async function verifyAction(_prev: FormState, formData: FormData): Promis
     redirect("/login?expired=1");
   }
 
-  if (result.purpose === "signup") confirmEmail(result.userId);
+  if (result.purpose === "signup") await confirmEmail(result.userId);
   await startSession(result.userId);
   redirect(result.purpose === "signup" ? "/dashboard?bemvindo=1" : "/dashboard");
 }
 
 export async function resendCodeAction(_prev: FormState): Promise<FormState> {
-  const target = getResendTarget(await getPendingChallengeId());
-  const user = target ? getUserById(target.userId) : undefined;
+  const target = await getResendTarget(await getPendingChallengeId());
+  const user = target ? await getUserById(target.userId) : undefined;
   if (!target || !user || target.purpose === "reset") {
     await clearPendingChallengeCookie();
     redirect("/login?expired=1");
   }
   if (target.waitSeconds > 0) {
-    return { error: `Aguarde ${target.waitSeconds}s para pedir um novo código.` };
+    return {
+      error: `Aguarde ${target.waitSeconds}s para pedir um novo código.`,
+    };
   }
 
   try {
@@ -211,10 +245,13 @@ export async function forgotPasswordAction(_prev: FormState, formData: FormData)
   const parsed = forgotSchema.safeParse(values);
   if (!parsed.success) return { fields: fieldErrors(parsed.error), values };
 
-  const user = findVerifiedUserByEmail(parsed.data.email);
+  const limitedForgot = await limitByIp("forgot");
+  if (limitedForgot) return { error: limitedForgot, values };
+
+  const user = await findVerifiedUserByEmail(parsed.data.email);
   if (user) {
     // Pedido repetido em menos de 30s não dispara outro e-mail (o código anterior continua valendo).
-    if (sendCooldown(user.id, "reset") === 0) {
+    if ((await sendCooldown(user.id, "reset")) === 0) {
       try {
         await issueChallenge(user, "reset");
       } catch {
@@ -235,19 +272,29 @@ export async function resetPasswordAction(_prev: FormState, formData: FormData):
   });
   if (!parsed.success) return { fields: fieldErrors(parsed.error) };
 
+  const limitedReset = await limitByIp("code");
+  if (limitedReset) return { fields: { code: limitedReset } };
+
   const challengeId = await getPendingChallengeId();
-  const target = getResendTarget(challengeId);
-  const user = target?.purpose === "reset" ? getUserById(target.userId) : undefined;
+  const target = await getResendTarget(challengeId);
+  const user = target?.purpose === "reset" ? await getUserById(target.userId) : undefined;
 
   // Confere a força da senha com o nome/e-mail da conta ANTES de gastar uma tentativa do código.
   if (user) {
-    const problem = passwordProblem(parsed.data.password, { name: user.name, email: user.email });
+    const problem = passwordProblem(parsed.data.password, {
+      name: user.name,
+      email: user.email,
+    });
     if (problem) return { fields: { password: problem } };
   }
 
-  const result = verifyChallenge(challengeId, parsed.data.code, new Date(), ["reset"]);
+  const result = await verifyChallenge(challengeId, parsed.data.code, new Date(), ["reset"]);
   if (!result.ok) {
-    return { fields: { code: codeError(result) ?? "Código inválido ou expirado. Peça um novo código." } };
+    return {
+      fields: {
+        code: codeError(result) ?? "Código inválido ou expirado. Peça um novo código.",
+      },
+    };
   }
 
   await changePassword(result.userId, parsed.data.password);
@@ -257,10 +304,13 @@ export async function resetPasswordAction(_prev: FormState, formData: FormData):
 
 export async function resendResetCodeAction(_prev: FormState): Promise<FormState> {
   const notice = "Se houver uma conta com esse e-mail, enviamos um novo código.";
-  const target = getResendTarget(await getPendingChallengeId());
-  const user = target?.purpose === "reset" ? getUserById(target.userId) : undefined;
+  const target = await getResendTarget(await getPendingChallengeId());
+  const user = target?.purpose === "reset" ? await getUserById(target.userId) : undefined;
   if (!target || !user) return { notice };
-  if (target.waitSeconds > 0) return { error: `Aguarde ${target.waitSeconds}s para pedir um novo código.` };
+  if (target.waitSeconds > 0)
+    return {
+      error: `Aguarde ${target.waitSeconds}s para pedir um novo código.`,
+    };
   try {
     await issueChallenge(user, "reset");
   } catch {

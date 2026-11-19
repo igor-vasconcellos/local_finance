@@ -13,8 +13,8 @@ export const metadata: Metadata = { title: "Simulador" };
 export default async function SimulatorPage() {
   const uid = await requireUserId();
   const today = todayISO();
-  const { months, thresholds } = projectMonths(uid, currentMonth(), 12, today);
-  const cards = listCards(uid, today)
+  const { months, thresholds } = await projectMonths(uid, currentMonth(), 12, today);
+  const cards = (await listCards(uid, today))
     .filter((c) => c.active)
     .map((c) => ({
       id: c.id,
@@ -34,8 +34,8 @@ export default async function SimulatorPage() {
         months={months}
         thresholds={thresholds}
         cards={cards}
-        categories={listCategories(uid, "expense")}
-        simulations={listSimulations(uid)}
+        categories={await listCategories(uid, "expense")}
+        simulations={await listSimulations(uid)}
         today={today}
       />
     </>

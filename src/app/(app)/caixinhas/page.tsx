@@ -14,9 +14,9 @@ export const metadata: Metadata = { title: "Caixinhas" };
 export default async function BoxesPage() {
   const uid = await requireUserId();
   const today = todayISO();
-  const boxes = listBoxes(uid, today);
-  const cdi = cdiRateOn(uid, today);
-  const goals = goalsForMonth(uid, today.slice(0, 7), today);
+  const boxes = await listBoxes(uid, today);
+  const cdi = await cdiRateOn(uid, today);
+  const goals = await goalsForMonth(uid, today.slice(0, 7), today);
 
   const total = boxes.reduce((a, b) => a + b.balanceCents, 0);
   const yieldTotal = boxes.reduce((a, b) => a + b.yieldCents, 0);
@@ -37,17 +37,28 @@ export default async function BoxesPage() {
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Total guardado" value={formatBRL(total)} icon={<PiggyBank />} tone="primary" />
           <StatCard label="Rendimento acumulado" value={formatBRL(yieldTotal)} icon={<TrendingUp />} tone="success" />
-          <StatCard label="Rendimento previsto no mês" value={formatBRL(monthYield)} hint="Sobre o saldo atual" icon={<Sparkles />} />
+          <StatCard
+            label="Rendimento previsto no mês"
+            value={formatBRL(monthYield)}
+            hint="Sobre o saldo atual"
+            icon={<Sparkles />}
+          />
           <StatCard
             label="Guardar este mês (metas)"
             value={formatBRL(goals.planned)}
-            hint={goals.saved > 0 ? `${formatBRL(goals.saved)} já guardados este mês` : goals.saved < 0 ? `${formatBRL(-goals.saved)} resgatados este mês` : "Para seguir o plano das metas"}
+            hint={
+              goals.saved > 0
+                ? `${formatBRL(goals.saved)} já guardados este mês`
+                : goals.saved < 0
+                  ? `${formatBRL(-goals.saved)} resgatados este mês`
+                  : "Para seguir o plano das metas"
+            }
             icon={<Target />}
           />
         </div>
       )}
 
-      <BoxesView boxes={boxes} institutions={listBoxInstitutionNames(uid)} />
+      <BoxesView boxes={boxes} institutions={await listBoxInstitutionNames(uid)} />
     </>
   );
 }

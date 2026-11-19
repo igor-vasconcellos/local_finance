@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/db/client";
+import { first } from "@/db/query";
 import { categories } from "@/db/schema";
 import { parsePdfStatement } from "@/lib/import";
 import { addBoxTransaction, createBox, deleteBox, getBoxDetail, listBoxes, updateBox } from "@/server/finance/boxes";
@@ -61,98 +62,144 @@ const income = {
   notes: null,
 };
 
-beforeEach(() => {
-  a = freshUser("a@example.com", "Ana");
-  b = addUser("b@example.com", "Bruno");
-  catA = db.insert(categories).values({ userId: a, name: "Moradia", kind: "expense" }).returning().get().id;
-  setCdiRate(a, 1365, "2026-01-01");
-  setCdiRate(b, 1365, "2026-01-01");
+beforeEach(async () => {
+  a = await freshUser("a@example.com", "Ana");
+  b = await addUser("b@example.com", "Bruno");
+  catA = (await db.insert(categories).values({ userId: a, name: "Moradia", kind: "expense" }).returning().then(first))!.id;
+  await setCdiRate(a, 1365, "2026-01-01");
+  await setCdiRate(b, 1365, "2026-01-01");
 });
 
 describe("isolamento entre contas", () => {
-  it("listas e painéis só mostram os dados da própria conta", () => {
-    const { id: cardA } = createCard(a, card);
-    createPurchase(a, purchase(cardA, catA));
-    createIncome(a, income);
-    createExpense(a, { name: "Aluguel", categoryId: catA, amount: 300000, dueDay: 10, startMonth: "2026-11", endMonth: null, notes: null });
-    createBox(a, { name: "Reserva", institution: "Nubank", cdiPercent: 11500, goal: null, goalDate: null, color: "#7c3aed" });
+  it("listas e painéis só mostram os dados da própria conta", async () => {
+    const { id: cardA } = await createCard(a, card);
+    await createPurchase(a, purchase(cardA, catA));
+    await createIncome(a, income);
+    await createExpense(a, {
+      name: "Aluguel",
+      categoryId: catA,
+      amount: 300000,
+      dueDay: 10,
+      startMonth: "2026-11",
+      endMonth: null,
+      notes: null,
+    });
+    await createBox(a, {
+      name: "Reserva",
+      institution: "Nubank",
+      cdiPercent: 11500,
+      goal: null,
+      goalDate: null,
+      color: "#7c3aed",
+    });
 
-    expect(listCards(b, TODAY)).toEqual([]);
-    expect(listIncomes(b)).toEqual([]);
-    expect(listExpenses(b)).toEqual([]);
-    expect(listBoxes(b, TODAY)).toEqual([]);
-    expect(listCategories(b, "expense")).toEqual([]);
-    const ov = getMonthOverview(b, "2026-12", TODAY);
+    expect(await listCards(b, TODAY)).toEqual([]);
+    expect(await listIncomes(b)).toEqual([]);
+    expect(await listExpenses(b)).toEqual([]);
+    expect(await listBoxes(b, TODAY)).toEqual([]);
+    expect(await listCategories(b, "expense")).toEqual([]);
+    const ov = await getMonthOverview(b, "2026-12", TODAY);
     expect(ov.totals.toPay + ov.totals.totalIncome + ov.totals.debts).toBe(0);
-    expect(getCategoryReport(b, "2026-12").rows).toEqual([]);
-    expect(projectMonths(b, "2026-12", 3, TODAY).months.every((m) => m.incomeCents === 0 && m.invoicesCents === 0)).toBe(true);
+    expect((await getCategoryReport(b, "2026-12")).rows).toEqual([]);
+    expect((await projectMonths(b, "2026-12", 3, TODAY)).months.every((m) => m.incomeCents === 0 && m.invoicesCents === 0)).toBe(
+      true,
+    );
 
     // A continua vendo tudo.
-    expect(listCards(a, TODAY)).toHaveLength(1);
-    expect(getMonthOverview(a, "2026-12", TODAY).totals.debts).toBe(120000);
+    expect(await listCards(a, TODAY)).toHaveLength(1);
+    expect((await getMonthOverview(a, "2026-12", TODAY)).totals.debts).toBe(120000);
   });
 
-  it("não lê nem altera cartões, compras e faturas de outra conta", () => {
-    const { id: cardA } = createCard(a, card);
-    const { id: purchaseA } = createPurchase(a, purchase(cardA));
+  it("não lê nem altera cartões, compras e faturas de outra conta", async () => {
+    const { id: cardA } = await createCard(a, card);
+    const { id: purchaseA } = await createPurchase(a, purchase(cardA));
 
-    expect(getCard(b, cardA)).toBeUndefined();
-    expect(listInvoiceMonths(b, cardA, TODAY)).toEqual([]);
-    expect(getInvoiceDetail(b, cardA, "2026-12", TODAY)).toBeNull();
-    expect(listPurchases(b, cardA)).toEqual([]);
-    expect(updateCard(b, cardA, { ...card, name: "Hackeado" })).toBe(false);
-    expect(setInvoicePaid(b, cardA, "2026-12", true)).toBe(false);
-    expect(updatePurchase(b, purchaseA, purchase(cardA))).toBe(false);
-    expect(deletePurchase(b, purchaseA)).toBe(false);
-    expect(deleteCard(b, cardA)).toBe(false);
+    expect(await getCard(b, cardA)).toBeUndefined();
+    expect(await listInvoiceMonths(b, cardA, TODAY)).toEqual([]);
+    expect(await getInvoiceDetail(b, cardA, "2026-12", TODAY)).toBeNull();
+    expect(await listPurchases(b, cardA)).toEqual([]);
+    expect(await updateCard(b, cardA, { ...card, name: "Hackeado" })).toBe(false);
+    expect(await setInvoicePaid(b, cardA, "2026-12", true)).toBe(false);
+    expect(await updatePurchase(b, purchaseA, purchase(cardA))).toBe(false);
+    expect(await deletePurchase(b, purchaseA)).toBe(false);
+    expect(await deleteCard(b, cardA)).toBe(false);
 
-    expect(getCard(a, cardA)?.card.name).toBe("Nubank");
-    expect(listPurchases(a, cardA)).toHaveLength(1);
+    expect((await getCard(a, cardA))?.card.name).toBe("Nubank");
+    expect(await listPurchases(a, cardA)).toHaveLength(1);
   });
 
-  it("não deixa usar cartão ou categoria de outra conta ao lançar", () => {
-    const { id: cardA } = createCard(a, card);
-    const { id: cardB } = createCard(b, card);
-    expect(() => createPurchase(b, purchase(cardA))).toThrow(NotFoundError);
-    expect(() => createPurchase(b, purchase(cardB, catA))).toThrow(NotFoundError);
-    expect(() => createIncome(b, { ...income, categoryId: catA })).toThrow(NotFoundError);
-    expect(createSimulation(b, { description: "TV", paymentMethod: "credit", cardId: cardA, categoryId: null, total: 1000, installmentsCount: 1, purchaseDate: TODAY })).toEqual({
+  it("não deixa usar cartão ou categoria de outra conta ao lançar", async () => {
+    const { id: cardA } = await createCard(a, card);
+    const { id: cardB } = await createCard(b, card);
+    await expect(createPurchase(b, purchase(cardA))).rejects.toThrow(NotFoundError);
+    await expect(createPurchase(b, purchase(cardB, catA))).rejects.toThrow(NotFoundError);
+    await expect(createIncome(b, { ...income, categoryId: catA })).rejects.toThrow(NotFoundError);
+    expect(
+      await createSimulation(b, {
+        description: "TV",
+        paymentMethod: "credit",
+        cardId: cardA,
+        categoryId: null,
+        total: 1000,
+        installmentsCount: 1,
+        purchaseDate: TODAY,
+      }),
+    ).toEqual({
       ok: false,
       error: "Cartão não encontrado.",
     });
   });
 
-  it("não altera rendas, caixinhas, simulações, confirmações e CDI de outra conta", () => {
-    const { id: incomeA } = createIncome(a, income);
-    const { id: boxA } = createBox(a, { name: "Reserva", institution: "Nubank", cdiPercent: 11500, goal: null, goalDate: null, color: "#7c3aed" });
-    const simA = createSimulation(a, { description: "TV", paymentMethod: "debit", cardId: null, categoryId: null, total: 1000, installmentsCount: 1, purchaseDate: TODAY });
+  it("não altera rendas, caixinhas, simulações, confirmações e CDI de outra conta", async () => {
+    const { id: incomeA } = await createIncome(a, income);
+    const { id: boxA } = await createBox(a, {
+      name: "Reserva",
+      institution: "Nubank",
+      cdiPercent: 11500,
+      goal: null,
+      goalDate: null,
+      color: "#7c3aed",
+    });
+    const simA = await createSimulation(a, {
+      description: "TV",
+      paymentMethod: "debit",
+      cardId: null,
+      categoryId: null,
+      total: 1000,
+      installmentsCount: 1,
+      purchaseDate: TODAY,
+    });
     const simId = simA.ok ? simA.id : 0;
 
-    expect(updateIncome(b, incomeA, { ...income, name: "X" })).toBe(false);
-    expect(deleteIncome(b, incomeA)).toBe(false);
-    expect(setSettled(b, "income", incomeA, "2026-11", true)).toBe(false);
-    expect(getBoxDetail(b, boxA, TODAY)).toBeNull();
-    expect(updateBox(b, boxA, { name: "X", institution: "Y", cdiPercent: 10000, goal: null, goalDate: null, color: "#7c3aed" })).toBe(false);
-    expect(addBoxTransaction(b, { boxId: boxA, type: "deposit", amount: 100, date: TODAY, notes: null }, TODAY)).toMatchObject({ ok: false });
-    expect(deleteBox(b, boxA)).toBe(false);
-    expect(effectivateSimulation(b, simId)).toMatchObject({ ok: false });
-    expect(deleteSimulation(b, simId)).toBe(false);
-    expect(listSimulations(b)).toEqual([]);
-    expect(deleteExpense(b, 1)).toBe(false);
-    const rateA = listCdiRates(a)[0].id;
-    setCdiRate(a, 1400, "2026-06-01");
-    expect(deleteCdiRate(b, rateA)).toBe(false);
-    expect(listCdiRates(a)).toHaveLength(2);
+    expect(await updateIncome(b, incomeA, { ...income, name: "X" })).toBe(false);
+    expect(await deleteIncome(b, incomeA)).toBe(false);
+    expect(await setSettled(b, "income", incomeA, "2026-11", true)).toBe(false);
+    expect(await getBoxDetail(b, boxA, TODAY)).toBeNull();
+    expect(
+      await updateBox(b, boxA, { name: "X", institution: "Y", cdiPercent: 10000, goal: null, goalDate: null, color: "#7c3aed" }),
+    ).toBe(false);
+    expect(
+      await addBoxTransaction(b, { boxId: boxA, type: "deposit", amount: 100, date: TODAY, notes: null }, TODAY),
+    ).toMatchObject({ ok: false });
+    expect(await deleteBox(b, boxA)).toBe(false);
+    expect(await effectivateSimulation(b, simId)).toMatchObject({ ok: false });
+    expect(await deleteSimulation(b, simId)).toBe(false);
+    expect(await listSimulations(b)).toEqual([]);
+    expect(await deleteExpense(b, 1)).toBe(false);
+    const rateA = (await listCdiRates(a))[0].id;
+    await setCdiRate(a, 1400, "2026-06-01");
+    expect(await deleteCdiRate(b, rateA)).toBe(false);
+    expect(await listCdiRates(a)).toHaveLength(2);
 
-    expect(listIncomes(a)[0].name).toBe("Salário");
-    expect(listBoxes(a, TODAY)).toHaveLength(1);
+    expect((await listIncomes(a))[0].name).toBe("Salário");
+    expect(await listBoxes(a, TODAY)).toHaveLength(1);
   });
 
-  it("importação de fatura respeita a conta", () => {
-    const { id: cardA } = createCard(a, card);
+  it("importação de fatura respeita a conta", async () => {
+    const { id: cardA } = await createCard(a, card);
     const st = parsePdfStatement(["Vencimento:  10/12/2026  Fechamento:  04/12/2026", "PicPay", "20/11  UBER  9,00"]);
-    expect(() => buildPreview(b, cardA, "f.pdf", st, TODAY)).toThrow(/Cartão não encontrado/);
-    const p = buildPreview(a, cardA, "f.pdf", st, TODAY);
+    await expect(buildPreview(b, cardA, "f.pdf", st, TODAY)).rejects.toThrow(/Cartão não encontrado/);
+    const p = await buildPreview(a, cardA, "f.pdf", st, TODAY);
     const input = {
       cardId: cardA,
       bank: p.bank,
@@ -163,13 +210,23 @@ describe("isolamento entre contas", () => {
       datesFromFile: true,
       markPaid: false,
       updateCardSchedule: false,
-      lines: p.lines.map((l) => ({ key: l.key, kind: "purchase" as const, date: l.date, description: l.description, amountCents: l.amountCents, installment: null, categoryId: null })),
+      lines: p.lines.map((l) => ({
+        key: l.key,
+        kind: "purchase" as const,
+        date: l.date,
+        description: l.description,
+        amountCents: l.amountCents,
+        installment: null,
+        categoryId: null,
+      })),
     };
-    expect(() => commitImport(b, input)).toThrow(NotFoundError);
-    expect(() => commitImport(a, { ...input, lines: input.lines.map((l) => ({ ...l, categoryId: 999999 })) })).toThrow(NotFoundError);
-    const r = commitImport(a, input);
-    expect(listImports(b, cardA)).toEqual([]);
-    expect(undoImport(b, cardA, r.importId)).toBe(false);
-    expect(listImports(a, cardA)).toHaveLength(1);
+    await expect(commitImport(b, input)).rejects.toThrow(NotFoundError);
+    await expect(commitImport(a, { ...input, lines: input.lines.map((l) => ({ ...l, categoryId: 999999 })) })).rejects.toThrow(
+      NotFoundError,
+    );
+    const r = await commitImport(a, input);
+    expect(await listImports(b, cardA)).toEqual([]);
+    expect(await undoImport(b, cardA, r.importId)).toBe(false);
+    expect(await listImports(a, cardA)).toHaveLength(1);
   });
 });

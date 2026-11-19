@@ -14,9 +14,9 @@ export async function saveIncomeAction(_prev: ActionState, fd: FormData): Promis
   const id = parseId(fd.get("id"));
   try {
     if (id) {
-      if (!updateIncome(uid, id, parsed.data)) return { error: "Renda não encontrada." };
+      if (!(await updateIncome(uid, id, parsed.data))) return { error: "Renda não encontrada." };
     } else {
-      createIncome(uid, parsed.data);
+      await createIncome(uid, parsed.data);
     }
   } catch (error) {
     return notFound(error);
@@ -28,13 +28,13 @@ export async function saveIncomeAction(_prev: ActionState, fd: FormData): Promis
 export async function toggleIncomeAction(fd: FormData): Promise<void> {
   const uid = await requireUserId();
   const id = parseId(fd.get("id"));
-  if (id) setIncomeActive(uid, id, fd.get("active") === "true");
+  if (id) await setIncomeActive(uid, id, fd.get("active") === "true");
   refresh();
 }
 
 export async function deleteIncomeAction(fd: FormData): Promise<void> {
   const uid = await requireUserId();
   const id = parseId(fd.get("id"));
-  if (id) deleteIncome(uid, id);
+  if (id) await deleteIncome(uid, id);
   refresh();
 }

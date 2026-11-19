@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
+import { boolean, check, index, integer, pgTable, text, unique } from "drizzle-orm/pg-core";
 import { DATE_GLOB, id, MONTH_GLOB, timestamps } from "./_helpers";
 import { users } from "./auth";
 import { categories } from "./base";
@@ -11,7 +11,7 @@ import { creditCards } from "./cards";
  * - debit:  sem cartão; sai integralmente no mês da compra (1 parcela).
  * Ao efetivar: credit → card_purchases; debit → one_time_expenses.
  */
-export const simulations = sqliteTable(
+export const simulations = pgTable(
   "simulations",
   {
     id: id(),
@@ -28,7 +28,7 @@ export const simulations = sqliteTable(
     status: text("status", { enum: ["active", "archived", "effectivated"] })
       .notNull()
       .default("active"),
-    isVisible: integer("is_visible", { mode: "boolean" }).notNull().default(true),
+    isVisible: boolean("is_visible").notNull().default(true),
     effectivatedAt: text("effectivated_at"),
     ...timestamps(),
   },
@@ -42,16 +42,13 @@ export const simulations = sqliteTable(
     ),
     check("simulations_total_positive", sql`${t.totalCents} > 0`),
     check("simulations_status", sql`${t.status} IN ('active', 'archived', 'effectivated')`),
-    check("simulations_date_fmt", sql`${t.purchaseDate} GLOB '${sql.raw(DATE_GLOB)}'`),
-    check(
-      "simulations_effectivated",
-      sql`(${t.status} = 'effectivated') = (${t.effectivatedAt} IS NOT NULL)`,
-    ),
+    check("simulations_date_fmt", sql`${t.purchaseDate} ~ '${sql.raw(DATE_GLOB)}'`),
+    check("simulations_effectivated", sql`(${t.status} = 'effectivated') = (${t.effectivatedAt} IS NOT NULL)`),
   ],
 );
 
 /** Parcelas hipotéticas, por mês de impacto no caixa (YYYY-MM). */
-export const simulationInstallments = sqliteTable(
+export const simulationInstallments = pgTable(
   "simulation_installments",
   {
     id: id(),
@@ -67,6 +64,6 @@ export const simulationInstallments = sqliteTable(
     index("sim_installments_month_idx").on(t.referenceMonth),
     check("sim_installments_number_positive", sql`${t.number} >= 1`),
     check("sim_installments_amount_positive", sql`${t.amountCents} > 0`),
-    check("sim_installments_month_fmt", sql`${t.referenceMonth} GLOB '${sql.raw(MONTH_GLOB)}'`),
+    check("sim_installments_month_fmt", sql`${t.referenceMonth} ~ '${sql.raw(MONTH_GLOB)}'`),
   ],
 );

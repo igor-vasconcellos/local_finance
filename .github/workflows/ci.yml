@@ -20,7 +20,8 @@ jobs:
     timeout-minutes: 15
     env:
       SESSION_SECRET: ci-secret-ci-secret-ci-secret-ci-secret-123
-      DATABASE_PATH: ./data/ci.db
+      # O build não conecta no banco (telas dinâmicas); os testes usam PGlite em memória.
+      DATABASE_URL: postgres://ci:ci@localhost:5432/ci
       MAIL_MODE: console
       EMAIL_MX_CHECK: "false"
     steps:
@@ -29,7 +30,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      # .npmrc tem ignore-scripts=true; o better-sqlite3 já traz binários prontos (prebuilds/).
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck

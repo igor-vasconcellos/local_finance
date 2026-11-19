@@ -1,22 +1,19 @@
-import type Database from "better-sqlite3";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type * as schema from "./schema";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { migrate as migratePg } from "drizzle-orm/postgres-js/migrator";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 
 /**
- * Aplica as migrações com as chaves estrangeiras DESLIGADAS: algumas migrações recriam
- * tabelas (CREATE nova → copia → DROP antiga) e, com elas ligadas, o DROP apagaria em
- * cascata os dados das tabelas filhas. No fim, confere a integridade e religa.
+ * Aplica as migrações pendentes (pasta ./drizzle), de preferência pela conexão de
+ * sessão (DIRECT_URL, porta 5432); o pooler em modo transação também funciona.
+ * Roda no build da Vercel (`npm run vercel-build`) e pelo `npm run db:migrate`.
  */
-export function runMigrations(sqlite: Database.Database, db: BetterSQLite3Database<typeof schema>, migrationsFolder: string) {
-  sqlite.pragma("foreign_keys = OFF");
+export async function runMigrations(url: string, migrationsFolder = "./drizzle") {
+  const clean = new URL(url);
+  for (const key of [...clean.searchParams.keys()]) if (key !== "sslmode") clean.searchParams.delete(key);
+  const client = postgres(clean.toString(), { max: 1, prepare: false, onnotice: () => {} });
   try {
-    migrate(db, { migrationsFolder });
-    const problems = sqlite.pragma("foreign_key_check") as unknown[];
-    if (problems.length) {
-      throw new Error(`Migração deixou ${problems.length} referência(s) quebrada(s): ${JSON.stringify(problems.slice(0, 5))}`);
-    }
+    await migratePg(drizzle(client), { migrationsFolder });
   } finally {
-    sqlite.pragma("foreign_keys = ON");
+    await client.end();
   }
 }

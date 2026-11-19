@@ -1,12 +1,12 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { check, index, integer, pgTable, text } from "drizzle-orm/pg-core";
 import { createdAt, timestamps } from "./_helpers";
 
 /** MÓDULO 1 — Contas. Cada pessoa vê apenas os próprios dados (todas as tabelas têm user_id). */
-export const users = sqliteTable(
+export const users = pgTable(
   "users",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
     name: text("name").notNull(),
     email: text("email").notNull().unique(),
     passwordHash: text("password_hash").notNull(),
@@ -24,7 +24,7 @@ export const users = sqliteTable(
 );
 
 /** Desafio 2FA: código de 6 dígitos (armazenado apenas como HMAC), válido por poucos minutos. */
-export const authChallenges = sqliteTable(
+export const authChallenges = pgTable(
   "auth_challenges",
   {
     id: text("id").primaryKey(), // UUID referenciado pelo cookie "pré-autenticação"
@@ -32,7 +32,9 @@ export const authChallenges = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     /** login = 2FA do login; signup = confirmar e-mail do cadastro; reset = trocar a senha. */
-    purpose: text("purpose", { enum: ["login", "signup", "reset"] }).notNull().default("login"),
+    purpose: text("purpose", { enum: ["login", "signup", "reset"] })
+      .notNull()
+      .default("login"),
     codeHash: text("code_hash").notNull(),
     expiresAt: text("expires_at").notNull(),
     attempts: integer("attempts").notNull().default(0),
@@ -47,7 +49,7 @@ export const authChallenges = sqliteTable(
 );
 
 /** Sessões ativas. O cookie (JWT) carrega apenas o id; revogar = preencher revoked_at. */
-export const sessions = sqliteTable(
+export const sessions = pgTable(
   "sessions",
   {
     id: text("id").primaryKey(), // hash SHA-256 do token aleatório
@@ -63,3 +65,10 @@ export const sessions = sqliteTable(
   },
   (t) => [index("sessions_user_idx").on(t.userId)],
 );
+
+/** Contador de tentativas por chave (ex.: "login:ip:1.2.3.4") numa janela de tempo. */
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull().default(0),
+  windowStart: text("window_start").notNull(),
+});

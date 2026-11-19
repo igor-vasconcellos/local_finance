@@ -15,9 +15,9 @@ export async function saveExpenseAction(_prev: ActionState, fd: FormData): Promi
   const id = parseId(fd.get("id"));
   try {
     if (id) {
-      if (!updateExpense(uid, id, parsed.data)) return { error: "Gasto não encontrado." };
+      if (!(await updateExpense(uid, id, parsed.data))) return { error: "Gasto não encontrado." };
     } else {
-      createExpense(uid, parsed.data);
+      await createExpense(uid, parsed.data);
     }
   } catch (error) {
     return notFound(error);
@@ -29,20 +29,20 @@ export async function saveExpenseAction(_prev: ActionState, fd: FormData): Promi
 export async function toggleExpenseAction(fd: FormData): Promise<void> {
   const uid = await requireUserId();
   const id = parseId(fd.get("id"));
-  if (id) setExpenseActive(uid, id, fd.get("active") === "true");
+  if (id) await setExpenseActive(uid, id, fd.get("active") === "true");
   refresh();
 }
 
 export async function deleteExpenseAction(fd: FormData): Promise<void> {
   const uid = await requireUserId();
   const id = parseId(fd.get("id"));
-  if (id) deleteExpense(uid, id);
+  if (id) await deleteExpense(uid, id);
   refresh();
 }
 
 export async function deleteOneTimeAction(fd: FormData): Promise<void> {
   const uid = await requireUserId();
   const id = parseId(fd.get("id"));
-  if (id) deleteOneTimeExpense(uid, id);
+  if (id) await deleteOneTimeExpense(uid, id);
   refresh();
 }

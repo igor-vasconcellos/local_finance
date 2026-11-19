@@ -26,7 +26,7 @@ import { toggleSettlementAction } from "@/server/actions/overview";
 import { getCategoryReport, getMonthOverview } from "@/server/finance/overview";
 
 /** Visão mensal do painel (resumo, vencimentos, entradas, faturas e categorias). */
-export function MonthlyView({
+export async function MonthlyView({
   uid,
   month,
   current,
@@ -39,8 +39,8 @@ export function MonthlyView({
   today: ISODate;
   sim: boolean;
 }) {
-  const o = getMonthOverview(uid, month, today, { includeSimulations: sim });
-  const report = getCategoryReport(uid, month);
+  const o = await getMonthOverview(uid, month, today, { includeSimulations: sim });
+  const report = await getCategoryReport(uid, month);
   const t = o.totals;
   const freePct = t.totalIncome > 0 ? (t.forecast / t.totalIncome) * 100 : null;
   const monthLabel = formatMonthLong(month).toLowerCase();
@@ -92,10 +92,32 @@ export function MonthlyView({
 
       {/* Indicadores */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Kpi label="Total recebido" value={t.received} icon={<ArrowDownCircle />} tone="success" hint={`de ${formatBRL(t.totalIncome)} previstos`} />
-        <Kpi label="Despesas pagas" value={t.paid} icon={<ArrowUpCircle />} tone="danger" hint={`de ${formatBRL(t.paid + t.toPay)} no mês`} />
-        <Kpi label="A receber" value={t.toReceive} icon={<CalendarClock />} hint={plural(o.incomes.filter((i) => !i.settled).length, "entrada pendente", "entradas pendentes")} />
-        <Kpi label="A pagar" value={t.toPay} icon={<CircleDollarSign />} hint={plural(o.payables.length, "conta pendente", "contas pendentes")} />
+        <Kpi
+          label="Total recebido"
+          value={t.received}
+          icon={<ArrowDownCircle />}
+          tone="success"
+          hint={`de ${formatBRL(t.totalIncome)} previstos`}
+        />
+        <Kpi
+          label="Despesas pagas"
+          value={t.paid}
+          icon={<ArrowUpCircle />}
+          tone="danger"
+          hint={`de ${formatBRL(t.paid + t.toPay)} no mês`}
+        />
+        <Kpi
+          label="A receber"
+          value={t.toReceive}
+          icon={<CalendarClock />}
+          hint={plural(o.incomes.filter((i) => !i.settled).length, "entrada pendente", "entradas pendentes")}
+        />
+        <Kpi
+          label="A pagar"
+          value={t.toPay}
+          icon={<CircleDollarSign />}
+          hint={plural(o.payables.length, "conta pendente", "contas pendentes")}
+        />
         <Kpi
           label="Reserva (cofrinho)"
           value={t.reserve}
@@ -139,7 +161,9 @@ export function MonthlyView({
         <Card>
           <SectionHeader icon={<CalendarClock />} title="Próximos vencimentos" aside={formatBRL(t.toPay + t.simulated)} />
           {o.payables.length === 0 ? (
-            o.simulatedItems.length ? null : <Empty>Nenhuma conta pendente em {monthLabel}.</Empty>
+            o.simulatedItems.length ? null : (
+              <Empty>Nenhuma conta pendente em {monthLabel}.</Empty>
+            )
           ) : (
             <ul className="divide-y">
               {o.payables.map((p) => (
@@ -157,7 +181,9 @@ export function MonthlyView({
                       )}
                     </p>
                   </div>
-                  <p className="text-sm font-semibold tabular-nums">{formatBRL(p.kind === "invoice" ? p.totalCents : p.amountCents)}</p>
+                  <p className="text-sm font-semibold tabular-nums">
+                    {formatBRL(p.kind === "invoice" ? p.totalCents : p.amountCents)}
+                  </p>
                   {p.kind === "invoice" ? (
                     <InvoiceForm cardId={p.cardId} month={month} paid={false} label="Pagar" />
                   ) : (
@@ -177,7 +203,9 @@ export function MonthlyView({
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{it.description}</p>
                     <p className="text-xs text-muted-foreground">
-                      {it.paymentMethod === "credit" ? `${it.cardName ?? "Cartão"}${it.count > 1 ? ` · parcela ${it.number}/${it.count}` : ""}` : "Débito / Pix"}
+                      {it.paymentMethod === "credit"
+                        ? `${it.cardName ?? "Cartão"}${it.count > 1 ? ` · parcela ${it.number}/${it.count}` : ""}`
+                        : "Débito / Pix"}
                     </p>
                   </div>
                   <Badge tone="primary">Simulado</Badge>
@@ -189,7 +217,9 @@ export function MonthlyView({
           {o.paidItems.length > 0 && (
             <details className="group border-t">
               <summary className="cursor-pointer list-none px-5 py-3 text-sm text-muted-foreground hover:text-foreground">
-                <span className="group-open:hidden">Ver {plural(o.paidItems.length, "conta paga", "contas pagas")} neste mês</span>
+                <span className="group-open:hidden">
+                  Ver {plural(o.paidItems.length, "conta paga", "contas pagas")} neste mês
+                </span>
                 <span className="hidden group-open:inline">Ocultar contas pagas</span>
               </summary>
               <ul className="divide-y border-t">
@@ -226,11 +256,21 @@ export function MonthlyView({
                 <li key={i.id} className={cn("flex items-center gap-3 px-5 py-3", i.settled && "text-muted-foreground")}>
                   <DateChip date={i.date} />
                   <div className="min-w-0 flex-1">
-                    <p className={cn("truncate text-sm font-medium", i.settled && "line-through decoration-muted-foreground/50")}>{i.name}</p>
+                    <p className={cn("truncate text-sm font-medium", i.settled && "line-through decoration-muted-foreground/50")}>
+                      {i.name}
+                    </p>
                     <p className="text-xs text-muted-foreground">{i.settled ? "Recebido" : "A receber"}</p>
                   </div>
-                  <p className={cn("text-sm font-semibold tabular-nums", !i.settled && "text-success")}>{formatBRL(i.amountCents)}</p>
-                  <SettleForm kind="income" id={i.id} month={month} settled={i.settled} label={i.settled ? "Desfazer" : "Recebi"} />
+                  <p className={cn("text-sm font-semibold tabular-nums", !i.settled && "text-success")}>
+                    {formatBRL(i.amountCents)}
+                  </p>
+                  <SettleForm
+                    kind="income"
+                    id={i.id}
+                    month={month}
+                    settled={i.settled}
+                    label={i.settled ? "Desfazer" : "Recebi"}
+                  />
                 </li>
               ))}
             </ul>
@@ -241,15 +281,26 @@ export function MonthlyView({
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Faturas */}
         <Card>
-          <SectionHeader icon={<CreditCard />} title={`Faturas de ${monthLabel}`} aside={formatBRL(o.cardInvoices.reduce((a, i) => a + i.totalCents, 0))} />
+          <SectionHeader
+            icon={<CreditCard />}
+            title={`Faturas de ${monthLabel}`}
+            aside={formatBRL(o.cardInvoices.reduce((a, i) => a + i.totalCents, 0))}
+          />
           {o.cardInvoices.length === 0 ? (
             <Empty>Nenhuma fatura com lançamentos neste mês.</Empty>
           ) : (
             <ul className="divide-y">
               {o.cardInvoices.map((i) => (
                 <li key={i.cardId}>
-                  <Link href={`/cartoes/${i.cardId}?fatura=${i.referenceMonth}`} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/50">
-                    <span className="size-3 shrink-0 rounded-full" style={{ background: i.cardColor ?? "var(--primary)" }} aria-hidden />
+                  <Link
+                    href={`/cartoes/${i.cardId}?fatura=${i.referenceMonth}`}
+                    className="flex items-center gap-3 px-5 py-3 hover:bg-muted/50"
+                  >
+                    <span
+                      className="size-3 shrink-0 rounded-full"
+                      style={{ background: i.cardColor ?? "var(--primary)" }}
+                      aria-hidden
+                    />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{i.cardName}</p>
                       <p className="text-xs text-muted-foreground">Vence {formatDate(i.dueDate)}</p>
@@ -289,7 +340,11 @@ export function MonthlyView({
                   <li key={r.name} className="grid gap-1.5">
                     <div className="flex items-center justify-between gap-2 text-sm">
                       <span className="flex min-w-0 items-center gap-2">
-                        <span className="size-2 shrink-0 rounded-full" style={{ background: r.color ?? "var(--muted-foreground)" }} aria-hidden />
+                        <span
+                          className="size-2 shrink-0 rounded-full"
+                          style={{ background: r.color ?? "var(--muted-foreground)" }}
+                          aria-hidden
+                        />
                         <span className="truncate">{r.name}</span>
                       </span>
                       <span className="shrink-0 tabular-nums text-muted-foreground">
@@ -297,7 +352,10 @@ export function MonthlyView({
                       </span>
                     </div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-muted" role="presentation">
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: r.color ?? "var(--muted-foreground)" }} />
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${pct}%`, background: r.color ?? "var(--muted-foreground)" }}
+                      />
                     </div>
                   </li>
                 );
@@ -365,7 +423,9 @@ function Kpi({
           {icon}
         </span>
       </div>
-      <p className={cn("mt-2 text-2xl font-semibold tracking-tight tabular-nums", value < 0 && "text-danger")}>{formatBRL(value)}</p>
+      <p className={cn("mt-2 text-2xl font-semibold tracking-tight tabular-nums", value < 0 && "text-danger")}>
+        {formatBRL(value)}
+      </p>
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
@@ -378,7 +438,9 @@ function SectionHeader({ icon, title, aside }: { icon: ReactNode; title: string;
         {icon}
         {title}
       </h2>
-      {aside && <span className="shrink-0 text-sm font-medium whitespace-nowrap tabular-nums text-muted-foreground">{aside}</span>}
+      {aside && (
+        <span className="shrink-0 text-sm font-medium whitespace-nowrap tabular-nums text-muted-foreground">{aside}</span>
+      )}
     </div>
   );
 }

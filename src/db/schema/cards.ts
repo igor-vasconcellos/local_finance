@@ -1,12 +1,12 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, sqliteTable, text, unique, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
+import { boolean, check, index, integer, pgTable, text, unique, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { createdAt, DATE_GLOB, id, MONTH_GLOB, timestamps } from "./_helpers";
 import { users } from "./auth";
 import { categories, institutions } from "./base";
 import { simulations } from "./simulations";
 
 /** MÓDULO 2 — Cartões de crédito. */
-export const creditCards = sqliteTable(
+export const creditCards = pgTable(
   "credit_cards",
   {
     id: id(),
@@ -21,7 +21,7 @@ export const creditCards = sqliteTable(
     closingDay: integer("closing_day").notNull(),
     dueDay: integer("due_day").notNull(),
     color: text("color"),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    active: boolean("active").notNull().default(true),
     ...timestamps(),
   },
   (t) => [
@@ -36,7 +36,7 @@ export const creditCards = sqliteTable(
  * Faturas. Identificadas pelo mês do VENCIMENTO (quando o dinheiro sai da conta).
  * O total não é armazenado: é SUM(installments.amount_cents).
  */
-export const invoices = sqliteTable(
+export const invoices = pgTable(
   "invoices",
   {
     id: id(),
@@ -56,13 +56,13 @@ export const invoices = sqliteTable(
     unique("invoices_card_month_uq").on(t.cardId, t.referenceMonth),
     index("invoices_month_idx").on(t.referenceMonth),
     check("invoices_status", sql`${t.status} IN ('open', 'closed', 'paid')`),
-    check("invoices_month_fmt", sql`${t.referenceMonth} GLOB '${sql.raw(MONTH_GLOB)}'`),
+    check("invoices_month_fmt", sql`${t.referenceMonth} ~ '${sql.raw(MONTH_GLOB)}'`),
     check("invoices_dates", sql`${t.closingDate} <= ${t.dueDate}`),
   ],
 );
 
 /** Compras no cartão (à vista = 1 parcela). */
-export const cardPurchases = sqliteTable(
+export const cardPurchases = pgTable(
   "card_purchases",
   {
     id: id(),
@@ -79,13 +79,12 @@ export const cardPurchases = sqliteTable(
       .references(() => simulations.id, { onDelete: "set null" }),
     notes: text("notes"),
     /** Importação de fatura que criou a compra (para "Desfazer importação"). */
-    importId: integer("import_id").references((): AnySQLiteColumn => invoiceImports.id, { onDelete: "set null" }),
+    importId: integer("import_id").references((): AnyPgColumn => invoiceImports.id, { onDelete: "set null" }),
     /** Impressão digital da linha do arquivo do banco: evita importar a mesma compra duas vezes. */
     importKey: text("import_key"),
     /**
      * Fatura (mês de vencimento) da 1ª parcela, quando definida pelo banco.
      * Nulo = calculada pelo dia de fechamento do cartão (compras lançadas à mão).
-     * (Sem CHECK de formato: adicionar CHECK exigiria recriar a tabela na migração.)
      */
     firstInvoiceMonth: text("first_invoice_month"),
     ...timestamps(),
@@ -97,12 +96,12 @@ export const cardPurchases = sqliteTable(
 
     check("purchases_total_positive", sql`${t.totalCents} > 0`),
     check("purchases_installments_range", sql`${t.installmentsCount} BETWEEN 1 AND 48`),
-    check("purchases_date_fmt", sql`${t.purchaseDate} GLOB '${sql.raw(DATE_GLOB)}'`),
+    check("purchases_date_fmt", sql`${t.purchaseDate} ~ '${sql.raw(DATE_GLOB)}'`),
   ],
 );
 
 /** Parcelas reais, cada uma vinculada à fatura em que cai. */
-export const installments = sqliteTable(
+export const installments = pgTable(
   "installments",
   {
     id: id(),
@@ -128,7 +127,7 @@ export const IMPORT_BANKS = ["nubank", "picpay", "mercadopago"] as const;
 export type ImportBank = (typeof IMPORT_BANKS)[number];
 
 /** Histórico de importações de fatura (arquivo do banco → compras do cartão). */
-export const invoiceImports = sqliteTable(
+export const invoiceImports = pgTable(
   "invoice_imports",
   {
     id: id(),
@@ -149,13 +148,13 @@ export const invoiceImports = sqliteTable(
   (t) => [
     index("invoice_imports_card_idx").on(t.cardId),
     check("invoice_imports_bank", sql`${t.bank} IN ('nubank', 'picpay', 'mercadopago')`),
-    check("invoice_imports_month_fmt", sql`${t.referenceMonth} GLOB '${sql.raw(MONTH_GLOB)}'`),
+    check("invoice_imports_month_fmt", sql`${t.referenceMonth} ~ '${sql.raw(MONTH_GLOB)}'`),
     check("invoice_imports_counts", sql`${t.purchasesCount} >= 0 AND ${t.creditsCount} >= 0`),
   ],
 );
 
 /** Créditos e estornos da fatura: descontados do total. */
-export const invoiceCredits = sqliteTable(
+export const invoiceCredits = pgTable(
   "invoice_credits",
   {
     id: id(),
@@ -174,12 +173,12 @@ export const invoiceCredits = sqliteTable(
     index("invoice_credits_import_idx").on(t.importId),
     unique("invoice_credits_import_key_uq").on(t.invoiceId, t.importKey),
     check("invoice_credits_amount_positive", sql`${t.amountCents} > 0`),
-    check("invoice_credits_date_fmt", sql`${t.creditDate} GLOB '${sql.raw(DATE_GLOB)}'`),
+    check("invoice_credits_date_fmt", sql`${t.creditDate} ~ '${sql.raw(DATE_GLOB)}'`),
   ],
 );
 
 /** Regras aprendidas: estabelecimento (normalizado) → categoria. */
-export const merchantRules = sqliteTable(
+export const merchantRules = pgTable(
   "merchant_rules",
   {
     id: id(),

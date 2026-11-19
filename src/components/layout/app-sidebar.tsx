@@ -14,7 +14,6 @@ import { ThemeToggle } from "./theme-toggle";
 
 type User = { name: string; email: string; avatarColor: string | null };
 
-
 function NavLinks({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
@@ -25,7 +24,9 @@ function NavLinks({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate?:
             (collapsed ? (
               i > 0 && <hr className="mx-2 mb-2 border-border" />
             ) : (
-              <p className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">{section.title}</p>
+              <p className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">
+                {section.title}
+              </p>
             ))}
           {section.items.map(({ href, label, icon: Icon, soon }) => {
             const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -35,7 +36,12 @@ function NavLinks({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate?:
             );
             if (soon) {
               return (
-                <span key={href} className={cn(cls, "cursor-not-allowed text-muted-foreground/60")} aria-disabled title={collapsed ? `${label} (em breve)` : undefined}>
+                <span
+                  key={href}
+                  className={cn(cls, "cursor-not-allowed text-muted-foreground/60")}
+                  aria-disabled
+                  title={collapsed ? `${label} (em breve)` : undefined}
+                >
                   <Icon className="size-4 shrink-0" aria-hidden />
                   {collapsed ? <span className="sr-only">{label}</span> : label}
                 </span>
@@ -145,7 +151,7 @@ export function AppSidebar({ user, defaultCollapsed }: { user: User; defaultColl
       >
         <div className={cn("flex items-center", collapsed ? "flex-col gap-3" : "justify-between gap-2")}>
           {collapsed ? (
-            <Link href="/dashboard" aria-label="Local Finance — Visão geral" title="Local Finance">
+            <Link href="/dashboard" aria-label="BeaconFinance — Visão geral" title="BeaconFinance">
               <span className="inline-flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
                 <Wallet className="size-5" aria-hidden />
               </span>

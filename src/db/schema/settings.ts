@@ -1,10 +1,10 @@
 import { sql } from "drizzle-orm";
-import { check, integer, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
+import { check, integer, pgTable, text, unique } from "drizzle-orm/pg-core";
 import { createdAt, DATE_GLOB, updatedAt } from "./_helpers";
 import { users } from "./auth";
 
 /** Configurações de cada conta (uma linha por pessoa). Limites do farol em basis points sobre a renda do mês. */
-export const settings = sqliteTable(
+export const settings = pgTable(
   "settings",
   {
     userId: integer("user_id")
@@ -29,10 +29,10 @@ export const settings = sqliteTable(
  * Histórico da taxa CDI anual. Uma nova taxa vale a partir de `effective_from`,
  * preservando o rendimento já calculado em períodos anteriores.
  */
-export const cdiRates = sqliteTable(
+export const cdiRates = pgTable(
   "cdi_rates",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
     userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -43,6 +43,6 @@ export const cdiRates = sqliteTable(
   (t) => [
     unique("cdi_rates_user_date_uq").on(t.userId, t.effectiveFrom),
     check("cdi_rates_positive", sql`${t.annualRateBp} > 0 AND ${t.annualRateBp} <= 10000`),
-    check("cdi_rates_date_fmt", sql`${t.effectiveFrom} GLOB '${sql.raw(DATE_GLOB)}'`),
+    check("cdi_rates_date_fmt", sql`${t.effectiveFrom} ~ '${sql.raw(DATE_GLOB)}'`),
   ],
 );

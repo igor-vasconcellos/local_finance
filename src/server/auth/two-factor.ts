@@ -2,6 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { and, desc, eq, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db/client";
+import { first } from "@/db/query";
 import { authChallenges } from "@/db/schema";
 import { env } from "@/env";
 
@@ -9,10 +10,7 @@ import { env } from "@/env";
 export const RESEND_COOLDOWN_SECONDS = 30;
 
 function hashCode(challengeId: string, code: string): string {
-  return crypto
-    .createHmac("sha256", env.SESSION_SECRET)
-    .update(`2fa:${challengeId}:${code}`)
-    .digest("hex");
+  return crypto.createHmac("sha256", env.SESSION_SECRET).update(`2fa:${challengeId}:${code}`).digest("hex");
 }
 
 function generateCode(): string {
@@ -22,41 +20,43 @@ function generateCode(): string {
 /** login = 2FA do login; signup = confirmar e-mail; reset = trocar a senha. */
 export type ChallengePurpose = "login" | "signup" | "reset";
 
-export type NewChallenge = { challengeId: string; code: string; expiresAt: string };
+export type NewChallenge = {
+  challengeId: string;
+  code: string;
+  expiresAt: string;
+};
 
 /**
  * Cria um novo desafio 2FA para o usuário e invalida os anteriores ainda pendentes.
  * O código em claro só existe na memória (para ser enviado); no banco vai o HMAC.
  */
-export function createChallenge(
+export async function createChallenge(
   userId: number,
   now: Date = new Date(),
   purpose: ChallengePurpose = "login",
-): NewChallenge {
+): Promise<NewChallenge> {
   const challengeId = crypto.randomUUID();
   const code = generateCode();
   const expiresAt = new Date(now.getTime() + env.TWO_FACTOR_TTL_MINUTES * 60_000).toISOString();
 
-  db.transaction((tx) => {
-    tx.update(authChallenges)
+  await db.transaction(async (tx) => {
+    await tx
+      .update(authChallenges)
       .set({ consumedAt: now.toISOString() })
-      .where(and(eq(authChallenges.userId, userId), isNull(authChallenges.consumedAt)))
-      .run();
+      .where(and(eq(authChallenges.userId, userId), isNull(authChallenges.consumedAt)));
 
-    tx.insert(authChallenges)
-      .values({
-        id: challengeId,
-        userId,
-        purpose,
-        codeHash: hashCode(challengeId, code),
-        expiresAt,
-        createdAt: now.toISOString(), // mesma fonte de tempo das demais regras
-      })
-      .run();
+    await tx.insert(authChallenges).values({
+      id: challengeId,
+      userId,
+      purpose,
+      codeHash: hashCode(challengeId, code),
+      expiresAt,
+      createdAt: now.toISOString(), // mesma fonte de tempo das demais regras
+    });
 
     // Faxina: remove desafios com mais de 1 dia.
     const dayAgo = new Date(now.getTime() - 86_400_000).toISOString();
-    tx.delete(authChallenges).where(lt(authChallenges.createdAt, dayAgo)).run();
+    await tx.delete(authChallenges).where(lt(authChallenges.createdAt, dayAgo));
   });
 
   return { challengeId, code, expiresAt };
@@ -72,12 +72,12 @@ export type PendingChallenge = {
 };
 
 /** Retorna o desafio se ele ainda puder ser usado (não consumido, não expirado, com tentativas). */
-export function getPendingChallenge(
+export async function getPendingChallenge(
   challengeId: string | undefined,
   now: Date = new Date(),
-): PendingChallenge | null {
+): Promise<PendingChallenge | null> {
   if (!challengeId) return null;
-  const row = db.select().from(authChallenges).where(eq(authChallenges.id, challengeId)).get();
+  const row = await db.select().from(authChallenges).where(eq(authChallenges.id, challengeId)).then(first);
   if (!row || row.consumedAt || row.expiresAt <= now.toISOString()) return null;
   const attemptsLeft = env.TWO_FACTOR_MAX_ATTEMPTS - row.attempts;
   if (attemptsLeft <= 0) return null;
@@ -104,14 +104,22 @@ const RESEND_WINDOW_MS = 60 * 60_000;
  * falta para liberar um novo envio. Funciona com desafios expirados/esgotados
  * criados há menos de 1 hora; nunca com desafio já usado no login.
  */
-export function getResendTarget(
+export async function getResendTarget(
   challengeId: string | undefined,
   now: Date = new Date(),
-): { userId: number; purpose: ChallengePurpose; waitSeconds: number } | null {
+): Promise<{
+  userId: number;
+  purpose: ChallengePurpose;
+  waitSeconds: number;
+} | null> {
   if (!challengeId) return null;
-  const row = db.select().from(authChallenges).where(eq(authChallenges.id, challengeId)).get();
+  const row = await db.select().from(authChallenges).where(eq(authChallenges.id, challengeId)).then(first);
   if (!row || now.getTime() - new Date(row.createdAt).getTime() > RESEND_WINDOW_MS) return null;
-  return { userId: row.userId, purpose: row.purpose, waitSeconds: secondsUntilResend(row, now) };
+  return {
+    userId: row.userId,
+    purpose: row.purpose,
+    waitSeconds: secondsUntilResend(row, now),
+  };
 }
 
 export type VerifyResult =
@@ -123,20 +131,24 @@ export type VerifyResult =
  * Confere o código. A tentativa é contada ANTES da comparação, numa única
  * instrução UPDATE condicional — tentativas em paralelo não furam o limite.
  */
-export function verifyChallenge(
+export async function verifyChallenge(
   challengeId: string | undefined,
   code: string,
   now: Date = new Date(),
   accepted: ChallengePurpose[] = ["login", "signup"],
-): VerifyResult {
+): Promise<VerifyResult> {
   if (!challengeId) return { ok: false, reason: "not_found" };
   const nowIso = now.toISOString();
 
   // Um código de "trocar senha" nunca serve para entrar, e vice-versa.
-  const kind = db.select({ purpose: authChallenges.purpose }).from(authChallenges).where(eq(authChallenges.id, challengeId)).get();
+  const kind = await db
+    .select({ purpose: authChallenges.purpose })
+    .from(authChallenges)
+    .where(eq(authChallenges.id, challengeId))
+    .then(first);
   if (!kind || !accepted.includes(kind.purpose)) return { ok: false, reason: "not_found" };
 
-  const row = db
+  const row = await db
     .update(authChallenges)
     .set({ attempts: sql`${authChallenges.attempts} + 1` })
     .where(
@@ -147,10 +159,10 @@ export function verifyChallenge(
       ),
     )
     .returning()
-    .get();
+    .then(first);
 
   if (!row) {
-    const existing = db.select().from(authChallenges).where(eq(authChallenges.id, challengeId)).get();
+    const existing = await db.select().from(authChallenges).where(eq(authChallenges.id, challengeId)).then(first);
     if (!existing || existing.consumedAt) return { ok: false, reason: "not_found" };
     return { ok: false, reason: "too_many_attempts" };
   }
@@ -163,18 +175,19 @@ export function verifyChallenge(
 
   if (!match) {
     const attemptsLeft = env.TWO_FACTOR_MAX_ATTEMPTS - row.attempts;
-    return attemptsLeft > 0
-      ? { ok: false, reason: "invalid", attemptsLeft }
-      : { ok: false, reason: "too_many_attempts" };
+    return attemptsLeft > 0 ? { ok: false, reason: "invalid", attemptsLeft } : { ok: false, reason: "too_many_attempts" };
   }
 
   // Uso único: só um request consegue marcar como consumido.
-  const consumed = db
+  const consumed = await db
     .update(authChallenges)
     .set({ consumedAt: nowIso })
     .where(and(eq(authChallenges.id, challengeId), isNull(authChallenges.consumedAt)))
-    .returning({ userId: authChallenges.userId, purpose: authChallenges.purpose })
-    .get();
+    .returning({
+      userId: authChallenges.userId,
+      purpose: authChallenges.purpose,
+    })
+    .then(first);
 
   return consumed ? { ok: true, userId: consumed.userId, purpose: consumed.purpose } : { ok: false, reason: "not_found" };
 }
@@ -184,12 +197,12 @@ export function verifyChallenge(
  * Fica no banco (não no cookie), então não dá para burlar limpando cookies:
  * protege contra usar o cadastro/"esqueci a senha" para disparar e-mails em massa.
  */
-export function sendCooldown(userId: number, purpose: ChallengePurpose, now: Date = new Date()): number {
-  const last = db
+export async function sendCooldown(userId: number, purpose: ChallengePurpose, now: Date = new Date()): Promise<number> {
+  const last = await db
     .select({ createdAt: authChallenges.createdAt })
     .from(authChallenges)
     .where(and(eq(authChallenges.userId, userId), eq(authChallenges.purpose, purpose)))
     .orderBy(desc(authChallenges.createdAt))
-    .get();
+    .then(first);
   return last ? secondsUntilResend(last, now) : 0;
 }

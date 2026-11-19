@@ -1,9 +1,10 @@
 import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
+import { touched } from "@/db/query";
 import { categories, oneTimeExpenses } from "@/db/schema";
 
-export function listOneTimeExpenses(uid: number, limit = 50) {
+export async function listOneTimeExpenses(uid: number, limit = 50) {
   return db
     .select({
       id: oneTimeExpenses.id,
@@ -18,10 +19,16 @@ export function listOneTimeExpenses(uid: number, limit = 50) {
     .leftJoin(categories, eq(categories.id, oneTimeExpenses.categoryId))
     .where(eq(oneTimeExpenses.userId, uid))
     .orderBy(desc(oneTimeExpenses.date), desc(oneTimeExpenses.id))
-    .limit(limit)
-    .all();
+    .limit(limit);
 }
 
-export function deleteOneTimeExpense(uid: number, id: number) {
-  return db.delete(oneTimeExpenses).where(and(eq(oneTimeExpenses.id, id), eq(oneTimeExpenses.userId, uid))).run().changes > 0;
+export async function deleteOneTimeExpense(uid: number, id: number) {
+  return (
+    (
+      await db
+        .delete(oneTimeExpenses)
+        .where(and(eq(oneTimeExpenses.id, id), eq(oneTimeExpenses.userId, uid)))
+        .returning(touched)
+    ).length > 0
+  );
 }

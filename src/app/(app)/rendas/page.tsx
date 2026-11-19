@@ -12,8 +12,8 @@ export const metadata: Metadata = { title: "Rendas" };
 
 export default async function IncomesPage() {
   const uid = await requireUserId();
-  const incomes = listIncomes(uid);
-  const categories = listCategories(uid, "income");
+  const incomes = await listIncomes(uid);
+  const categories = await listCategories(uid, "income");
   const month = currentMonth();
   const today = todayISO();
 
@@ -23,10 +23,7 @@ export default async function IncomesPage() {
 
   return (
     <>
-      <PageHeader
-        title="Rendas"
-        description="Salário, pró-labore e rendas extras que entram na sua conta."
-      />
+      <PageHeader title="Rendas" description="Salário, pró-labore e rendas extras que entram na sua conta." />
 
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
         <StatCard

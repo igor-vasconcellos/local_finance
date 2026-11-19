@@ -42,7 +42,8 @@ const TOPICS: Topic[] = [
             <strong>previsão do mês</strong> (realizado + a receber − a pagar − metas).
           </li>
           <li>
-            <strong>Semestral</strong> e <strong>Anual</strong> — gráfico e tabela do fluxo de caixa previsto, com o farol de cada mês.
+            <strong>Semestral</strong> e <strong>Anual</strong> — gráfico e tabela do fluxo de caixa previsto, com o farol de cada
+            mês.
           </li>
         </ul>
         <p className="font-medium text-foreground">Como usar</p>
@@ -53,13 +54,14 @@ const TOPICS: Topic[] = [
             <strong>Desfazer</strong>.
           </li>
           <li>
-            Ligue <strong>Mostrar simulações</strong> para ver como ficaria o orçamento com as compras que você está pensando em fazer.
+            Ligue <strong>Mostrar simulações</strong> para ver como ficaria o orçamento com as compras que você está pensando em
+            fazer.
           </li>
           <li>Na tabela semestral/anual, clique no mês para abrir os detalhes dele.</li>
         </ol>
         <p>
-          O <strong>farol</strong> classifica o mês pelo quanto da renda sobra livre: 🟢 saudável, 🟡 atenção, 🔴 crítico (limites ajustáveis
-          abaixo, em “Farol de saúde”).
+          O <strong>farol</strong> classifica o mês pelo quanto da renda sobra livre: 🟢 saudável, 🟡 atenção, 🔴 crítico (limites
+          ajustáveis abaixo, em “Farol de saúde”).
         </p>
       </>
     ),
@@ -72,7 +74,10 @@ const TOPICS: Topic[] = [
     linkLabel: "Abrir Relatórios",
     body: (
       <>
-        <p>Junta todas as saídas do mês — gastos fixos, parcelas de cartão que vencem no mês e gastos avulsos — e agrupa por categoria.</p>
+        <p>
+          Junta todas as saídas do mês — gastos fixos, parcelas de cartão que vencem no mês e gastos avulsos — e agrupa por
+          categoria.
+        </p>
         <ol>
           <li>Escolha o mês com as setas.</li>
           <li>Clique numa categoria para ver cada item, de onde veio (fixo, cartão ou avulso) e o valor.</li>
@@ -89,8 +94,8 @@ const TOPICS: Topic[] = [
     body: (
       <ol>
         <li>
-          Clique em <strong>Nova renda</strong> e escolha <strong>Todo mês</strong> (com dia de recebimento e, se quiser, um mês de término) ou{" "}
-          <strong>Uma vez</strong> (com a data).
+          Clique em <strong>Nova renda</strong> e escolha <strong>Todo mês</strong> (com dia de recebimento e, se quiser, um mês
+          de término) ou <strong>Uma vez</strong> (com a data).
         </li>
         <li>
           Use <strong>Pausar</strong> para deixar de contar uma renda sem apagá-la. Excluir remove de todos os meses.
@@ -109,15 +114,15 @@ const TOPICS: Topic[] = [
       <>
         <ol>
           <li>
-            Em <strong>Novo gasto</strong>, informe descrição, categoria, valor e dia de vencimento. Se o gasto vai acabar (ex.: um curso), defina o
-            mês de término.
+            Em <strong>Novo gasto</strong>, informe descrição, categoria, valor e dia de vencimento. Se o gasto vai acabar (ex.:
+            um curso), defina o mês de término.
           </li>
           <li>A lateral mostra quanto cada categoria pesa no seu mês.</li>
           <li>Todo mês, marque como pago na Visão geral com “Pagar”.</li>
         </ol>
         <p>
-          <strong>Gastos avulsos</strong> (débito/Pix) aparecem no fim da página — hoje eles são criados ao efetivar uma simulação de débito no
-          Simulador.
+          <strong>Gastos avulsos</strong> (débito/Pix) aparecem no fim da página — hoje eles são criados ao efetivar uma simulação
+          de débito no Simulador.
         </p>
       </>
     ),
@@ -133,13 +138,14 @@ const TOPICS: Topic[] = [
         <ol>
           <li>Cadastre o cartão com limite, dia de fechamento e dia de vencimento (como aparecem no app do banco).</li>
           <li>
-            Abra o cartão e use <strong>Lançar compra</strong>. Escolha as parcelas — o formulário mostra em quais faturas elas vão cair.
+            Abra o cartão e use <strong>Lançar compra</strong>. Escolha as parcelas — o formulário mostra em quais faturas elas
+            vão cair.
           </li>
           <li>Navegue pelas faturas na faixa de meses e use “Marcar como paga” quando quitar (isso libera o limite).</li>
         </ol>
         <p>
-          Regras: compra <strong>antes</strong> do fechamento entra na fatura do mês; <strong>no dia</strong> do fechamento ou depois, na
-          seguinte. A fatura é identificada pelo mês do vencimento. Limite comprometido inclui parcelas futuras.
+          Regras: compra <strong>antes</strong> do fechamento entra na fatura do mês; <strong>no dia</strong> do fechamento ou
+          depois, na seguinte. A fatura é identificada pelo mês do vencimento. Limite comprometido inclui parcelas futuras.
         </p>
       </>
     ),
@@ -154,23 +160,24 @@ const TOPICS: Topic[] = [
       <>
         <ol>
           <li>
-            Baixe a fatura no app do banco: <strong>Nubank</strong> em CSV; <strong>PicPay</strong> e <strong>Mercado Pago</strong> em PDF.
+            Baixe a fatura no app do banco: <strong>Nubank</strong> em CSV; <strong>PicPay</strong> e{" "}
+            <strong>Mercado Pago</strong> em PDF.
           </li>
           <li>
             Abra o cartão e clique em <strong>Importar fatura</strong> (ou use o botão na página Cartões e escolha o cartão).
           </li>
           <li>
-            Confira a prévia: o app soma o que leu e compara com o total da fatura (“Leitura conferida”). Ajuste descrições e categorias se
-            quiser e clique em <strong>Importar</strong>.
+            Confira a prévia: o app soma o que leu e compara com o total da fatura (“Leitura conferida”). Ajuste descrições e
+            categorias se quiser e clique em <strong>Importar</strong>.
           </li>
         </ol>
         <p>
-          O pagamento da fatura é ignorado, créditos e estornos abatem o total, e a parcela “3/10” vira a compra completa em 10x (as faturas
-          antigas ficam pagas). Linhas já importadas não entram de novo, e compras iguais que você lançou à mão aparecem como “possível
-          duplicada”. As categorias que você escolhe são lembradas para as próximas faturas. Errou? Em <strong>Importações</strong>, na
-          página do cartão, use <strong>Desfazer</strong>.
+          O pagamento da fatura é ignorado, créditos e estornos abatem o total, e a parcela “3/10” vira a compra completa em 10x
+          (as faturas antigas ficam pagas). Linhas já importadas não entram de novo, e compras iguais que você lançou à mão
+          aparecem como “possível duplicada”. As categorias que você escolhe são lembradas para as próximas faturas. Errou? Em{" "}
+          <strong>Importações</strong>, na página do cartão, use <strong>Desfazer</strong>.
         </p>
-        <p>O arquivo é lido no seu computador e não fica guardado.</p>
+        <p>O arquivo é lido e descartado em seguida: não fica guardado.</p>
       </>
     ),
   },
@@ -184,15 +191,18 @@ const TOPICS: Topic[] = [
       <>
         <ol>
           <li>
-            Crie a caixinha com o banco e o <strong>% do CDI</strong> (ex.: 115). Se tiver um objetivo, informe o valor e a data da meta.
+            Crie a caixinha com o banco e o <strong>% do CDI</strong> (ex.: 115). Se tiver um objetivo, informe o valor e a data
+            da meta.
           </li>
           <li>
-            Registre o dinheiro que já está lá como primeiro <strong>aporte</strong>, com a data em que ele entrou — assim o rendimento fica certo.
+            Registre o dinheiro que já está lá como primeiro <strong>aporte</strong>, com a data em que ele entrou — assim o
+            rendimento fica certo.
           </li>
           <li>Use Aportar/Resgatar a cada movimentação. Com meta, o app sugere quanto guardar por mês.</li>
         </ol>
         <p>
-          O rendimento é calculado em dias úteis com a taxa CDI das Configurações (valor bruto, sem IR). Pode diferir alguns centavos do banco.
+          O rendimento é calculado em dias úteis com a taxa CDI das Configurações (valor bruto, sem IR). Pode diferir alguns
+          centavos do banco.
         </p>
       </>
     ),
@@ -244,14 +254,15 @@ const TOPICS: Topic[] = [
     body: (
       <ul>
         <li>Cada pessoa tem a própria conta, e os dados de uma conta nunca aparecem para outra.</li>
-        <li>Todo login pede e-mail, senha e um código de 6 dígitos enviado por e-mail (ou exibido no terminal, se o SMTP não estiver configurado).</li>
         <li>
-          Esqueceu a senha? Na tela de login, use <strong>Esqueci minha senha</strong>: o código chega no e-mail da conta e você cria uma
-          senha nova (as outras sessões abertas são encerradas).
+          Todo login pede e-mail, senha e um código de 6 dígitos enviado por e-mail (ou exibido no terminal, se o SMTP não estiver
+          configurado).
         </li>
         <li>
-          Para fazer uma cópia de segurança, rode <code>npm run db:backup</code> no terminal.
+          Esqueceu a senha? Na tela de login, use <strong>Esqueci minha senha</strong>: o código chega no e-mail da conta e você
+          cria uma senha nova (as outras sessões abertas são encerradas).
         </li>
+        <li>Os dados ficam num banco Postgres protegido, com cópia de segurança semanal criptografada.</li>
       </ul>
     ),
   },
@@ -265,8 +276,8 @@ const TOPICS: Topic[] = [
           <strong>Valores</strong>: digite só os números — <code>123456</code> vira <code>1.234,56</code>.
         </li>
         <li>
-          <strong>Datas</strong>: digite <code>20122026</code> (vira 20/12/2026) ou clique no ícone de calendário. No calendário, clique no nome do
-          mês para pular para outro mês/ano.
+          <strong>Datas</strong>: digite <code>20122026</code> (vira 20/12/2026) ou clique no ícone de calendário. No calendário,
+          clique no nome do mês para pular para outro mês/ano.
         </li>
         <li>
           <strong>Barra lateral</strong>: use o botão ao lado do logo para recolher e ganhar espaço.
@@ -294,7 +305,10 @@ export function Guide() {
                 <span className="block text-sm font-medium">{title}</span>
                 <span className="block text-xs text-muted-foreground">{summary}</span>
               </span>
-              <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
+              <ChevronDown
+                className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+                aria-hidden
+              />
             </summary>
             <div className="guide-body grid gap-3 px-4 pt-1 pb-4 pl-15 text-sm text-muted-foreground [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_code]:text-foreground [&_li]:pl-1 [&_ol]:grid [&_ol]:list-decimal [&_ol]:gap-1.5 [&_ol]:pl-5 [&_strong]:text-foreground [&_ul]:grid [&_ul]:list-disc [&_ul]:gap-1.5 [&_ul]:pl-5">
               {body}

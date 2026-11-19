@@ -1,27 +1,26 @@
 {
-  "name": "local-finance",
+  "name": "beacon-finance",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H 127.0.0.1 -p 3000",
+    "dev": "next dev",
     "build": "next build",
-    "start": "next start -H 127.0.0.1 -p 3000",
+    "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "setup": "tsx scripts/setup-env.ts && npm run db:setup",
+    "setup": "tsx scripts/setup-env.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
-    "db:setup": "npm run db:migrate && npm run db:seed",
-    "db:backup": "tsx scripts/backup-db.ts",
     "db:studio": "drizzle-kit studio",
-    "user:reset-password": "tsx scripts/reset-password.ts"
+    "user:reset-password": "tsx scripts/reset-password.ts",
+    "vercel-build": "tsx scripts/migrate.ts && next build",
+    "db:copy-from-sqlite": "tsx scripts/copy-from-sqlite.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^13.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
@@ -33,6 +32,7 @@
     "next-themes": "^0.4.6",
     "nodemailer": "^10.6.0",
     "pdfjs-dist": "^6.5.438",
+    "postgres": "^4.1.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "recharts": "^3.11.0",
@@ -41,8 +41,8 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.17",
     "@tailwindcss/turbopack": "4.3.3",
-    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.20.5",
     "@types/nodemailer": "^8.0.2",
     "@types/react": "^19",
