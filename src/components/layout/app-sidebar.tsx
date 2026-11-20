@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Wallet, X } from "lucide-react";
+import { Lock, LogOut, Menu, PanelLeftClose, PanelLeftOpen, ShieldCheck, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -8,17 +8,26 @@ import { cn } from "@/lib/utils";
 import { logoutAction } from "@/server/actions/auth";
 import { Avatar } from "./avatar";
 import { Brand } from "./brand";
-import { NAV_SECTIONS } from "./nav-items";
+import { NAV_SECTIONS, type NavItem } from "./nav-items";
 import { SIDEBAR_COOKIE } from "./sidebar-config";
 import { ThemeToggle } from "./theme-toggle";
 
 type User = { name: string; email: string; avatarColor: string | null };
 
-function NavLinks({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
+/** O que muda no menu conforme o acesso da conta. */
+export type NavAccess = { isAdmin: boolean; lockedHrefs: string[] };
+
+const ADMIN_SECTION: { title?: string; items: NavItem[] } = {
+  title: "Administração",
+  items: [{ href: "/admin", label: "Painel admin", icon: ShieldCheck }],
+};
+
+function NavLinks({ collapsed, onNavigate, access }: { collapsed?: boolean; onNavigate?: () => void; access: NavAccess }) {
   const pathname = usePathname();
+  const sections = access.isAdmin ? [...NAV_SECTIONS, ADMIN_SECTION] : NAV_SECTIONS;
   return (
     <nav className={cn("grid", collapsed ? "gap-3" : "gap-6")} aria-label="Navegação principal">
-      {NAV_SECTIONS.map((section, i) => (
+      {sections.map((section, i) => (
         <div key={i} className="grid gap-1">
           {section.title &&
             (collapsed ? (
@@ -29,6 +38,7 @@ function NavLinks({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate?:
               </p>
             ))}
           {section.items.map(({ href, label, icon: Icon, soon }) => {
+            const isLocked = access.lockedHrefs.includes(href);
             const active = pathname === href || pathname.startsWith(`${href}/`);
             const cls = cn(
               "flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors",
@@ -53,7 +63,7 @@ function NavLinks({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate?:
                 href={href}
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
-                title={collapsed ? label : undefined}
+                title={collapsed ? (isLocked ? `${label} (indisponível)` : label) : isLocked ? "Indisponível no momento" : undefined}
                 className={cn(
                   cls,
                   "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring",
@@ -62,6 +72,7 @@ function NavLinks({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate?:
               >
                 <Icon className={cn("shrink-0", collapsed ? "size-[18px]" : "size-4")} aria-hidden />
                 {collapsed ? <span className="sr-only">{label}</span> : label}
+                {isLocked && !collapsed && <Lock className="ml-auto size-3.5 text-muted-foreground/70" aria-label="indisponível" />}
               </Link>
             );
           })}
@@ -115,7 +126,7 @@ function UserFooter({ user, collapsed }: { user: User; collapsed?: boolean }) {
   );
 }
 
-export function AppSidebar({ user, defaultCollapsed }: { user: User; defaultCollapsed: boolean }) {
+export function AppSidebar({ user, defaultCollapsed, access }: { user: User; defaultCollapsed: boolean; access: NavAccess }) {
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
@@ -171,7 +182,7 @@ export function AppSidebar({ user, defaultCollapsed }: { user: User; defaultColl
           </button>
         </div>
         <div className="flex-1 overflow-y-auto">
-          <NavLinks collapsed={collapsed} />
+          <NavLinks collapsed={collapsed} access={access} />
         </div>
         <UserFooter user={user} collapsed={collapsed} />
       </aside>
@@ -206,7 +217,7 @@ export function AppSidebar({ user, defaultCollapsed }: { user: User; defaultColl
               </button>
             </div>
             <div className="flex-1 overflow-y-auto">
-              <NavLinks onNavigate={() => setOpen(false)} />
+              <NavLinks onNavigate={() => setOpen(false)} access={access} />
             </div>
             <UserFooter user={user} />
           </div>

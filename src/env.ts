@@ -50,6 +50,21 @@ const envSchema = z.object({
   /** A Vercel envia "Authorization: Bearer <CRON_SECRET>" nas chamadas agendadas. */
   CRON_SECRET: optionalString,
 
+  // ---- Administração ----
+  /**
+   * E-mails (separados por vírgula) das contas administradoras. Só valem com o
+   * e-mail confirmado. Nenhuma tela do app consegue promover outra conta a admin.
+   */
+  ADMIN_EMAILS: z
+    .string()
+    .default("")
+    .transform((v) =>
+      v
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+
   // ---- Cadastro ----
   /** Confere se o domínio do e-mail recebe mensagens (MX) antes de enviar o código. */
   EMAIL_MX_CHECK: z.stringbool().default(true),

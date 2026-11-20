@@ -1,13 +1,13 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { requireUserId } from "@/server/auth/current";
+import { requireWriteUserId } from "@/server/access/guard";
 import { setSettled } from "@/server/finance/settlements";
 import { parseId } from "./form-state";
 
 /** Marca/desmarca renda como recebida ou gasto fixo como pago no mês. */
 export async function toggleSettlementAction(fd: FormData): Promise<void> {
-  const uid = await requireUserId();
+  const uid = await requireWriteUserId();
   const kind = fd.get("kind");
   const id = parseId(fd.get("id"));
   const month = String(fd.get("month") ?? "");

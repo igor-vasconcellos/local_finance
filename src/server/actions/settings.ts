@@ -5,13 +5,15 @@ import { z } from "zod";
 import { parseBRL } from "@/lib/money";
 import { monthlyToAnnualPct, parsePct, pctToBp } from "@/lib/rates";
 import { dateField } from "@/lib/validation/finance";
-import { requireSession, requireUserId } from "@/server/auth/current";
+import { requireWriteUserId } from "@/server/access/guard";
+import { requireSession } from "@/server/auth/current";
 import { AVATAR_COLORS } from "@/lib/profile";
 import { updateAvatarColor, updateUserName } from "@/server/auth/users";
 import { deleteCdiRate, setCdiRate, updateAccountBalance, updateThresholds } from "@/server/finance/settings";
 import { formObject, invalid, parseId, type ActionState } from "./form-state";
 
 export async function saveNameAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  await requireWriteUserId();
   const { user } = await requireSession();
   const parsed = z
     .object({
@@ -25,7 +27,7 @@ export async function saveNameAction(_prev: ActionState, fd: FormData): Promise<
 }
 
 export async function saveBalanceAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const uid = await requireUserId();
+  const uid = await requireWriteUserId();
   const parsed = z
     .object({
       balance: z.string().transform((v, ctx) => {
@@ -49,7 +51,7 @@ export async function saveBalanceAction(_prev: ActionState, fd: FormData): Promi
 }
 
 export async function saveCdiAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const uid = await requireUserId();
+  const uid = await requireWriteUserId();
   const parsed = z
     .object({
       mode: z.enum(["monthly", "annual"]),
@@ -78,14 +80,14 @@ export async function saveCdiAction(_prev: ActionState, fd: FormData): Promise<A
 }
 
 export async function deleteCdiAction(fd: FormData): Promise<void> {
-  const uid = await requireUserId();
+  const uid = await requireWriteUserId();
   const id = parseId(fd.get("id"));
   if (id) await deleteCdiRate(uid, id);
   refresh();
 }
 
 export async function saveThresholdsAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const uid = await requireUserId();
+  const uid = await requireWriteUserId();
   const pct = (label: string) =>
     z.string().transform((v, ctx) => {
       const n = parsePct(v);
@@ -112,6 +114,7 @@ export async function saveThresholdsAction(_prev: ActionState, fd: FormData): Pr
 }
 
 export async function saveAvatarColorAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  await requireWriteUserId();
   const { user } = await requireSession();
   const color = String(fd.get("color") ?? "");
   if (!(AVATAR_COLORS as readonly string[]).includes(color)) return { error: "Cor inválida." };

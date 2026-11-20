@@ -6,4 +6,6 @@ process.env.EMAIL_MX_CHECK = "false";
 process.env.TWO_FACTOR_TTL_MINUTES = "5";
 process.env.TWO_FACTOR_MAX_ATTEMPTS = "5";
 process.env.SESSION_TTL_HOURS = "12";
+
+process.env.ADMIN_EMAILS = "admin@example.com";
 export {};

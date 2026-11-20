@@ -3,12 +3,12 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { boxSchema, boxTxSchema } from "@/lib/validation/finance";
-import { requireUserId } from "@/server/auth/current";
+import { requireWriteUserId } from "@/server/access/guard";
 import { addBoxTransaction, createBox, deleteBox, deleteBoxTransaction, updateBox } from "@/server/finance/boxes";
 import { formObject, invalid, parseId, type ActionState } from "./form-state";
 
 export async function saveBoxAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const uid = await requireUserId();
+  const uid = await requireWriteUserId("boxes");
   const parsed = boxSchema.safeParse(formObject(fd));
   if (!parsed.success) return invalid(parsed.error);
   const id = parseId(fd.get("id"));
@@ -22,14 +22,14 @@ export async function saveBoxAction(_prev: ActionState, fd: FormData): Promise<A
 }
 
 export async function deleteBoxAction(fd: FormData): Promise<void> {
-  const uid = await requireUserId();
+  const uid = await requireWriteUserId("boxes");
   const id = parseId(fd.get("id"));
   if (id) await deleteBox(uid, id);
   redirect("/caixinhas");
 }
 
 export async function addBoxTxAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const uid = await requireUserId();
+  const uid = await requireWriteUserId("boxes");
   const parsed = boxTxSchema.safeParse(formObject(fd));
   if (!parsed.success) return invalid(parsed.error);
   const result = await addBoxTransaction(uid, parsed.data);
@@ -39,7 +39,7 @@ export async function addBoxTxAction(_prev: ActionState, fd: FormData): Promise<
 }
 
 export async function deleteBoxTxAction(fd: FormData): Promise<{ error?: string }> {
-  const uid = await requireUserId();
+  const uid = await requireWriteUserId("boxes");
   const id = parseId(fd.get("id"));
   if (!id) return { error: "Movimentação inválida." };
   const result = await deleteBoxTransaction(uid, id);
