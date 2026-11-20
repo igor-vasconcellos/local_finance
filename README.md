@@ -153,12 +153,12 @@ reinicie o servidor. Se o SMTP falhar, o código é impresso no terminal como fa
 - Faturas reais têm dados pessoais e **nunca** entram no repositório: os testes usam cópias do
   formato com dados fictícios.
 
-### Saldo em conta (extrato)
+### Saldo em conta (calculado)
 
-- O card **Saldo em conta** (Visão geral) é a soma do extrato: saldo inicial + rendas recebidas − gastos e faturas pagos − gastos avulsos ± aportes/resgates de caixinhas.
-- **Recebi / Pagar** abre uma janela com o valor previsto e a data: dá para informar o valor real. **Desfazer** tira o lançamento do extrato.
-- **Ajustar** lança só a diferença para bater com o banco. **Ver extrato** mostra os últimos lançamentos.
-- Lançamentos com data anterior ao saldo inicial (já incluídos nele) ou no futuro não mudam o saldo de hoje. Faturas marcadas como pagas pela importação de arquivo não mexem no saldo (são históricas).
+- O card **Saldo em conta** (primeiro da Visão geral) é calculado sozinho — ninguém digita o valor: rendas marcadas como **Recebi** − gastos fixos marcados como **Pagar** − faturas pagas − gastos avulsos já ocorridos.
+- A **sobra de um mês passa para o seguinte** (saldo acumulado até o mês escolhido). Caixinhas não mexem no saldo.
+- **Recebi / Pagar** abre uma janela com o valor previsto para informar o valor real. **Desfazer** devolve.
+- **Ver extrato** mostra a sobra anterior, o que entrou e saiu no mês e o saldo.
 - "Hoje" é sempre calculado no fuso de Brasília.
 
 ### Painel admin e controle de acesso (Etapa 10)
@@ -167,7 +167,10 @@ reinicie o servidor. Se o SMTP falhar, o código é impresso no terminal como fa
 - **Usuários:** bloquear (com motivo; a pessoa é desconectada), desbloquear, cortesia (permanente ou até uma data) e encerrar sessões. Contas de admin não podem ser alteradas pelo painel.
 - **Conta bloqueada:** entra só para consulta. Um modal mostra o motivo, permite **Exportar meus dados** (.zip com CSVs) e reabre a cada tentativa de alteração; o servidor recusa toda escrita.
 - **Funcionalidades:** travar Caixinhas, Simulador ou Importação de faturas para todos (o admin continua usando), com mensagem opcional.
-- **Auditoria:** toda ação do painel fica registrada (quem, o quê, em quem, quando e IP). O painel nunca mostra dados financeiros dos usuários.
+- **Auditoria:** duas abas — **Segurança** (logins, senhas e códigos errados, bloqueios por tentativas, troca/recuperação de senha, exportações, tentativas barradas, sessões encerradas) e **Ações do admin**. Filtros por tipo, conta e período, paginação e **Exportar CSV**. O painel nunca mostra dados financeiros dos usuários.
+- **Alertas por e-mail** (para `ADMIN_EMAILS`, via SMTP): muitas senhas erradas na mesma conta em 15 min, conta bloqueada por tentativas e login de admin a partir de IP novo — no máximo 1 de cada tipo por hora. Sem SMTP, vão para o log.
+- **Retenção:** a tarefa diária apaga eventos de segurança e auditoria com mais de 12 meses.
+- **Minha atividade** (Configurações → Segurança): cada pessoa vê os aparelhos conectados, encerra uma sessão ou todas as outras, e vê os últimos acessos da própria conta.
 - **Upload de faturas:** o tipo é decidido pelo conteúdo do arquivo (não pelo nome), até 5 MB, 40 páginas, 15 s de leitura e 30 envios por hora; nada é salvo em disco.
 
 ### Interface

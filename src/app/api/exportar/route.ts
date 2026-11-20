@@ -1,6 +1,7 @@
 import { getCurrentSession } from "@/server/auth/current";
 import { hitRateLimit } from "@/server/auth/rate-limit";
 import { exportUserData } from "@/server/export/service";
+import { logSecurityEvent } from "@/server/security/events";
 
 /** Baixa um .zip com todos os dados da conta logada (liberado mesmo com a conta bloqueada). */
 export async function GET() {
@@ -10,6 +11,7 @@ export async function GET() {
   const limit = await hitRateLimit(`export:user:${session.user.id}`, 10, 60 * 60);
   if (!limit.ok) return new Response("Muitas exportações seguidas. Tente de novo mais tarde.", { status: 429 });
 
+  await logSecurityEvent({ event: "data_export", userId: session.user.id });
   const zip = await exportUserData(session.user.id);
   const date = new Date().toISOString().slice(0, 10);
   return new Response(zip as unknown as BodyInit, {

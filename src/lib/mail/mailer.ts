@@ -81,3 +81,26 @@ export async function sendTwoFactorCode(params: {
     return { delivered: "console", reason: "smtp_failed" };
   }
 }
+
+/**
+ * Alerta de segurança para os administradores. Nunca derruba a ação que o
+ * disparou: se o SMTP falhar (ou não existir), o alerta vai para o log.
+ */
+export async function sendAdminAlert(params: { to: string[]; subject: string; text: string }): Promise<void> {
+  const { to, subject, text } = params;
+  if (to.length === 0) return;
+  if (mailTransport === "console") {
+    console.warn(`[alerta] ${subject}\n${text}`);
+    return;
+  }
+  try {
+    await getTransporter().sendMail({
+      from: env.SMTP_FROM ?? env.SMTP_USER,
+      to: to.join(", "),
+      subject: `[BeaconFinance] ${subject}`,
+      text,
+    });
+  } catch (error) {
+    console.error("[alerta] Falha ao enviar alerta:", error instanceof Error ? error.message : error, "—", subject);
+  }
+}

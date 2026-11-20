@@ -115,7 +115,7 @@ export async function getMonthOverview(
     getSettings(uid),
     totalReserve(uid, today),
     cardDebts(uid),
-    getBalance(uid, today),
+    getBalance(uid, month, today),
   ]);
   const settledIncome = new Map(settled.filter((s) => s.incomeId).map((s) => [s.incomeId!, s.amountCents]));
   const settledExpense = new Map(settled.filter((s) => s.expenseId).map((s) => [s.expenseId!, s.amountCents]));
@@ -167,7 +167,7 @@ export async function getMonthOverview(
   const health = healthOf(forecast, totalIncome, settings.greenThresholdBp, settings.yellowThresholdBp);
 
   // Posição atual (não depende do mês selecionado).
-  const netWorth = (balance.cents ?? 0) + reserve - debts;
+  const netWorth = balance + reserve - debts;
 
   const payables: Payable[] = [
     ...expenses.filter((e) => !e.settled).map((e) => ({ kind: "expense" as const, ...e, overdue: e.date < today })),
@@ -198,11 +198,14 @@ export async function getMonthOverview(
     goals: goalPlan,
     health,
     thresholds: { greenBp: settings.greenThresholdBp, yellowBp: settings.yellowThresholdBp },
-    accountBalance: balance,
+    /** Saldo acumulado até o mês: sobra dos meses anteriores + o realizado no mês. */
+    accountBalance: { cents: balance, carried: balance - realized },
     incomes,
     payables,
     paidItems,
     cardInvoices,
+    /** Gastos avulsos do mês (débito/Pix efetivados pelo simulador). */
+    oneTime,
   };
 }
 

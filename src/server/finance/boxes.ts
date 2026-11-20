@@ -1,5 +1,4 @@
 import "server-only";
-import { recordMovement } from "./ledger";
 import { and, asc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { db, type Tx } from "@/db/client";
 import { first, touched } from "@/db/query";
@@ -269,23 +268,9 @@ export async function addBoxTransaction(uid: number, input: BoxTxInput, today: I
     }
   }
 
-  // Aporte sai da conta corrente; resgate volta para ela.
-  await db.transaction(async (tx) => {
-    const [row] = await tx
-      .insert(boxTransactions)
-      .values({ boxId: box.id, type: input.type, amountCents: input.amount, date: input.date, notes: input.notes })
-      .returning({ id: boxTransactions.id });
-    const deposit = input.type === "deposit";
-    await recordMovement(
-      tx,
-      uid,
-      "box",
-      { boxTxId: row.id },
-      deposit ? -input.amount : input.amount,
-      input.date,
-      `${deposit ? "Aporte" : "Resgate"}: ${box.name}`,
-    );
-  });
+  await db
+    .insert(boxTransactions)
+    .values({ boxId: box.id, type: input.type, amountCents: input.amount, date: input.date, notes: input.notes });
   return { ok: true };
 }
 

@@ -9,6 +9,7 @@ import { fieldErrors, forgotSchema, loginSchema, resetSchema, signupSchema, veri
 import {
   clearPendingChallengeCookie,
   clearSessionCookie,
+  getCurrentSession,
   getPendingChallengeId,
   getSessionJwt,
   setPendingChallengeCookie,
@@ -33,6 +34,7 @@ import {
   getUserById,
   registerUser,
 } from "@/server/auth/users";
+import { logSecurityEvent } from "@/server/security/events";
 
 export type FormState = {
   error?: string;
@@ -165,6 +167,11 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   const result = await authenticate(parsed.data.email, parsed.data.password);
 
   if (!result.ok) {
+    await logSecurityEvent({
+      event: result.reason === "locked" ? "login_locked" : "login_failed",
+      email: parsed.data.email,
+      details: result.reason === "locked" ? { until: result.until } : undefined,
+    });
     if (result.reason === "locked") {
       return {
         error: `Muitas tentativas incorretas. Por segurança, o login está bloqueado até ${formatTime(result.until)}.`,
@@ -195,16 +202,23 @@ export async function verifyAction(_prev: FormState, formData: FormData): Promis
   const limitedCode = await limitByIp("code");
   if (limitedCode) return { error: limitedCode };
 
-  const result = await verifyChallenge(await getPendingChallengeId(), parsed.data.code);
+  const challengeId = await getPendingChallengeId();
+  const result = await verifyChallenge(challengeId, parsed.data.code);
   if (!result.ok) {
+    const target = await getResendTarget(challengeId);
+    await logSecurityEvent({ event: "code_failed", userId: target?.userId ?? null, details: { reason: result.reason } });
     const message = codeError(result);
     if (message) return { error: message };
     await clearPendingChallengeCookie();
     redirect("/login?expired=1");
   }
 
-  if (result.purpose === "signup") await confirmEmail(result.userId);
+  if (result.purpose === "signup") {
+    await confirmEmail(result.userId);
+    await logSecurityEvent({ event: "signup_confirmed", userId: result.userId });
+  }
   await startSession(result.userId);
+  await logSecurityEvent({ event: "login_success", userId: result.userId });
   redirect(result.purpose === "signup" ? "/dashboard?bemvindo=1" : "/dashboard");
 }
 
@@ -249,6 +263,7 @@ export async function forgotPasswordAction(_prev: FormState, formData: FormData)
   if (limitedForgot) return { error: limitedForgot, values };
 
   const user = await findVerifiedUserByEmail(parsed.data.email);
+  await logSecurityEvent({ event: "password_reset_requested", userId: user?.id ?? null, email: parsed.data.email });
   if (user) {
     // Pedido repetido em menos de 30s não dispara outro e-mail (o código anterior continua valendo).
     if ((await sendCooldown(user.id, "reset")) === 0) {
@@ -290,6 +305,7 @@ export async function resetPasswordAction(_prev: FormState, formData: FormData):
 
   const result = await verifyChallenge(challengeId, parsed.data.code, new Date(), ["reset"]);
   if (!result.ok) {
+    await logSecurityEvent({ event: "code_failed", userId: target?.userId ?? null, details: { reason: result.reason, purpose: "reset" } });
     return {
       fields: {
         code: codeError(result) ?? "Código inválido ou expirado. Peça um novo código.",
@@ -298,6 +314,7 @@ export async function resetPasswordAction(_prev: FormState, formData: FormData):
   }
 
   await changePassword(result.userId, parsed.data.password);
+  await logSecurityEvent({ event: "password_changed", userId: result.userId, details: { via: "reset" } });
   await clearPendingChallengeCookie();
   redirect("/login?senha=1");
 }
@@ -322,6 +339,8 @@ export async function resendResetCodeAction(_prev: FormState): Promise<FormState
 // ------------------------------------------------------------------ Logout --
 
 export async function logoutAction(): Promise<void> {
+  const session = await getCurrentSession();
+  if (session) await logSecurityEvent({ event: "logout", userId: session.user.id });
   await revokeSession(await getSessionJwt());
   await clearSessionCookie();
   redirect("/login");

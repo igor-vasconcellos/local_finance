@@ -24,8 +24,6 @@ import { formatPct } from "@/lib/rates";
 import { cn } from "@/lib/utils";
 import { setInvoicePaidAction } from "@/server/actions/cards";
 import { toggleSettlementAction } from "@/server/actions/overview";
-import { getAccessCached } from "@/server/access/service";
-import { listMovements } from "@/server/finance/ledger";
 import { getCategoryReport, getMonthOverview } from "@/server/finance/overview";
 
 /** Visão mensal do painel (resumo, vencimentos, entradas, faturas e categorias). */
@@ -42,12 +40,7 @@ export async function MonthlyView({
   today: ISODate;
   sim: boolean;
 }) {
-  const [o, movements, access] = await Promise.all([
-    getMonthOverview(uid, month, today, { includeSimulations: sim }),
-    listMovements(uid, 40, today),
-    getAccessCached(uid),
-  ]);
-  const readOnly = access?.readOnly ?? false;
+  const o = await getMonthOverview(uid, month, today, { includeSimulations: sim });
   const report = await getCategoryReport(uid, month);
   const t = o.totals;
   const freePct = t.totalIncome > 0 ? (t.forecast / t.totalIncome) * 100 : null;
@@ -102,11 +95,20 @@ export async function MonthlyView({
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <BalanceCard
           balance={o.accountBalance.cents}
+          carried={o.accountBalance.carried}
           netWorth={t.netWorth}
           reserve={t.reserve}
           debts={t.debts}
-          movements={movements}
-          readOnly={readOnly}
+          monthLabel={monthLabel}
+          items={[
+            ...o.incomes
+              .filter((i) => i.settled)
+              .map((i) => ({ key: `i${i.id}`, date: i.date, description: i.name, amountCents: i.amountCents })),
+            ...o.paidItems.map((p) => ({ key: `${p.kind}${p.id}`, date: p.date, description: p.name, amountCents: -p.amountCents })),
+            ...o.oneTime
+              .filter((x) => x.date <= today)
+              .map((x) => ({ key: `o${x.id}`, date: x.date, description: x.description, amountCents: -x.amountCents })),
+          ].sort((a, b) => a.date.localeCompare(b.date))}
         />
         <Kpi
           label="Total recebido"
@@ -186,12 +188,7 @@ export async function MonthlyView({
                     {formatBRL(p.kind === "invoice" ? p.totalCents : p.amountCents)}
                   </p>
                   {p.kind === "invoice" ? (
-                    <ConfirmMovementButton
-                      target={{ kind: "invoice", cardId: p.cardId, month }}
-                      name={`Fatura ${p.cardName}`}
-                      amountCents={p.totalCents}
-                      label="Pagar"
-                    />
+                    <InvoiceForm cardId={p.cardId} month={month} paid={false} label="Pagar" />
                   ) : (
                     <ConfirmMovementButton
                       target={{ kind: "expense", id: p.id, month }}

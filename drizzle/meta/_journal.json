@@ -29,6 +29,13 @@
       "when": 1795145330716,
       "tag": "0003_account_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795146508489,
+      "tag": "0004_security_events",
+      "breakpoints": true
     }
   ]
 }

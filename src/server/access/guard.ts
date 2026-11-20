@@ -6,6 +6,7 @@ import { requireSession } from "@/server/auth/current";
 import type { ValidSession } from "@/server/auth/sessions";
 import type { Access } from "./policy";
 import { getAccessCached } from "./service";
+import { logSecurityEvent } from "@/server/security/events";
 
 /** Página de cada função travável (para onde o usuário volta se ela estiver travada). */
 export const FEATURE_PATH: Record<FeatureKey, string> = {
@@ -45,8 +46,14 @@ async function originPath(): Promise<string> {
  */
 export async function requireWriteUserId(feature?: FeatureKey): Promise<number> {
   const { session, access } = await requireAccess();
-  if (access.readOnly) redirect(`${await originPath()}?bloqueado=${Date.now()}`);
-  if (feature && access.locked[feature]) redirect(FEATURE_PATH[feature]);
+  if (access.readOnly) {
+    await logSecurityEvent({ event: "blocked_write", userId: session.user.id, details: { path: await originPath() } });
+    redirect(`${await originPath()}?bloqueado=${Date.now()}`);
+  }
+  if (feature && access.locked[feature]) {
+    await logSecurityEvent({ event: "feature_locked", userId: session.user.id, details: { feature } });
+    redirect(FEATURE_PATH[feature]);
+  }
   return session.user.id;
 }
 
