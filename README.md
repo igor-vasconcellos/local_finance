@@ -167,7 +167,10 @@ reinicie o servidor. Se o SMTP falhar, o código é impresso no terminal como fa
 - **Usuários:** bloquear (com motivo; a pessoa é desconectada), desbloquear, cortesia (permanente ou até uma data) e encerrar sessões. Contas de admin não podem ser alteradas pelo painel.
 - **Conta bloqueada:** entra só para consulta. Um modal mostra o motivo, permite **Exportar meus dados** (.zip com CSVs) e reabre a cada tentativa de alteração; o servidor recusa toda escrita.
 - **Funcionalidades:** travar Caixinhas, Simulador ou Importação de faturas para todos (o admin continua usando), com mensagem opcional.
-- **Auditoria:** toda ação do painel fica registrada (quem, o quê, em quem, quando e IP). O painel nunca mostra dados financeiros dos usuários.
+- **Auditoria:** duas abas — **Segurança** (logins, senhas e códigos errados, bloqueios por tentativas, troca/recuperação de senha, exportações, tentativas barradas, sessões encerradas) e **Ações do admin**. Filtros por tipo, conta e período, paginação e **Exportar CSV**. O painel nunca mostra dados financeiros dos usuários.
+- **Alertas por e-mail** (para `ADMIN_EMAILS`, via SMTP): muitas senhas erradas na mesma conta em 15 min, conta bloqueada por tentativas e login de admin a partir de IP novo — no máximo 1 de cada tipo por hora. Sem SMTP, vão para o log.
+- **Retenção:** a tarefa diária apaga eventos de segurança e auditoria com mais de 12 meses.
+- **Minha atividade** (Configurações → Segurança): cada pessoa vê os aparelhos conectados, encerra uma sessão ou todas as outras, e vê os últimos acessos da própria conta.
 - **Upload de faturas:** o tipo é decidido pelo conteúdo do arquivo (não pelo nome), até 5 MB, 40 páginas, 15 s de leitura e 30 envios por hora; nada é salvo em disco.
 
 ### Interface
