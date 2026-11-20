@@ -11,6 +11,10 @@ export const MOVEMENT_KINDS = ["opening", "adjustment", "income", "expense", "in
 export type MovementKind = (typeof MOVEMENT_KINDS)[number];
 
 /**
+ * DESCONTINUADA (20/11/2026): o saldo em conta passou a ser calculado a partir das
+ * confirmações (ver server/finance/ledger.ts). A tabela continua só até ser removida
+ * por uma migration futura; nada mais grava nela.
+ *
  * Extrato da conta corrente. O saldo em conta é a SOMA dos lançamentos com data
  * até hoje — nunca um número solto. Cada confirmação (renda recebida, gasto pago,
  * fatura paga, gasto avulso, aporte/resgate) gera um lançamento ligado à origem.

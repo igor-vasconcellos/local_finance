@@ -16,7 +16,6 @@ import {
 import { splitInstallments } from "@/lib/money";
 import type { CardInput, PurchaseInput } from "@/lib/validation/finance";
 import { assertCard, assertCategory, ownsCard } from "./owner";
-import { recordMovement, removeInvoiceMovement } from "./ledger";
 
 export type { Tx };
 export { ownsCard };
@@ -457,55 +456,15 @@ export async function deleteInvoiceCredit(uid: number, cardId: number, creditId:
   });
 }
 
-/** Valor líquido da fatura (parcelas − créditos/estornos). */
-export async function invoiceNetCents(q: DB | Tx, invoiceId: number): Promise<number> {
-  const res = (await q.execute(
-    sql`select coalesce((select sum(amount_cents) from installments where invoice_id = ${invoiceId}), 0)
-             - coalesce((select sum(amount_cents) from invoice_credits where invoice_id = ${invoiceId}), 0) as net`,
-  )) as unknown as { rows: { net: string | number }[] };
-  return Number(res.rows[0]?.net ?? 0);
-}
-
-/**
- * Marca a fatura como paga (ou desfaz). Pagar tira o valor do saldo em conta;
- * desfazer devolve. O valor pode ser informado (pagamento diferente do total).
- */
-export async function setInvoicePaid(
-  uid: number,
-  cardId: number,
-  referenceMonth: Month,
-  paid: boolean,
-  opts: { amountCents?: number; date?: string } = {},
-) {
-  return db.transaction(async (tx) => {
-    if (!(await ownsCard(tx, uid, cardId))) return false;
-    const card = await tx.select({ name: creditCards.name }).from(creditCards).where(eq(creditCards.id, cardId)).then(first);
-    const rows = await tx
-      .update(invoices)
-      .set({ status: paid ? "paid" : "open", paidAt: paid ? new Date().toISOString() : null })
-      .where(and(eq(invoices.cardId, cardId), eq(invoices.referenceMonth, referenceMonth)))
-      .returning({ id: invoices.id });
-    const invoice = rows[0];
-    if (!invoice) return false;
-    if (!paid) {
-      await removeInvoiceMovement(tx, uid, invoice.id);
-      return true;
-    }
-    const amount = opts.amountCents && opts.amountCents > 0 ? opts.amountCents : await invoiceNetCents(tx, invoice.id);
-    if (amount > 0) {
-      const [y, m] = referenceMonth.split("-");
-      await recordMovement(
-        tx,
-        uid,
-        "invoice",
-        { invoiceId: invoice.id },
-        -amount,
-        opts.date ?? todayISO(),
-        `Fatura ${card?.name ?? "do cartão"} ${m}/${y}`,
-      );
-    }
-    return true;
-  });
+/** Marca a fatura como paga (ou reabre). Fatura paga sai do saldo em conta. */
+export async function setInvoicePaid(uid: number, cardId: number, referenceMonth: Month, paid: boolean) {
+  if (!(await ownsCard(db, uid, cardId))) return false;
+  const rows = await db
+    .update(invoices)
+    .set({ status: paid ? "paid" : "open", paidAt: paid ? new Date().toISOString() : null })
+    .where(and(eq(invoices.cardId, cardId), eq(invoices.referenceMonth, referenceMonth)))
+    .returning(touched);
+  return rows.length > 0;
 }
 
 // ------------------------------------------------- Compras de um cartão --
