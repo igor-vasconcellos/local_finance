@@ -153,6 +153,14 @@ reinicie o servidor. Se o SMTP falhar, o código é impresso no terminal como fa
 - Faturas reais têm dados pessoais e **nunca** entram no repositório: os testes usam cópias do
   formato com dados fictícios.
 
+### Saldo em conta (extrato)
+
+- O card **Saldo em conta** (Visão geral) é a soma do extrato: saldo inicial + rendas recebidas − gastos e faturas pagos − gastos avulsos ± aportes/resgates de caixinhas.
+- **Recebi / Pagar** abre uma janela com o valor previsto e a data: dá para informar o valor real. **Desfazer** tira o lançamento do extrato.
+- **Ajustar** lança só a diferença para bater com o banco. **Ver extrato** mostra os últimos lançamentos.
+- Lançamentos com data anterior ao saldo inicial (já incluídos nele) ou no futuro não mudam o saldo de hoje. Faturas marcadas como pagas pela importação de arquivo não mexem no saldo (são históricas).
+- "Hoje" é sempre calculado no fuso de Brasília.
+
 ### Painel admin e controle de acesso (Etapa 10)
 
 - A conta definida em `ADMIN_EMAILS` (com e-mail confirmado) vê **Painel admin** no menu. Para qualquer outra conta, `/admin` responde "Página não encontrada".

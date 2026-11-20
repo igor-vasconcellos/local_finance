@@ -1,4 +1,5 @@
 import "server-only";
+import { getBalance } from "./ledger";
 import { and, eq, gte, lte, ne, sql, sum } from "drizzle-orm";
 import { db } from "@/db/client";
 import { first } from "@/db/query";
@@ -104,7 +105,7 @@ export async function getMonthOverview(
   today: ISODate = todayISO(),
   opts: { includeSimulations?: boolean } = {},
 ) {
-  const [settled, incomeRows, expenseRows, cardInvoices, oneTime, goalPlan, settings, reserve, debts] = await Promise.all([
+  const [settled, incomeRows, expenseRows, cardInvoices, oneTime, goalPlan, settings, reserve, debts, balance] = await Promise.all([
     listSettlements(uid, month),
     listIncomes(uid),
     listExpenses(uid),
@@ -114,6 +115,7 @@ export async function getMonthOverview(
     getSettings(uid),
     totalReserve(uid, today),
     cardDebts(uid),
+    getBalance(uid, today),
   ]);
   const settledIncome = new Map(settled.filter((s) => s.incomeId).map((s) => [s.incomeId!, s.amountCents]));
   const settledExpense = new Map(settled.filter((s) => s.expenseId).map((s) => [s.expenseId!, s.amountCents]));
@@ -165,7 +167,7 @@ export async function getMonthOverview(
   const health = healthOf(forecast, totalIncome, settings.greenThresholdBp, settings.yellowThresholdBp);
 
   // Posição atual (não depende do mês selecionado).
-  const netWorth = (settings.accountBalanceCents ?? 0) + reserve - debts;
+  const netWorth = (balance.cents ?? 0) + reserve - debts;
 
   const payables: Payable[] = [
     ...expenses.filter((e) => !e.settled).map((e) => ({ kind: "expense" as const, ...e, overdue: e.date < today })),
@@ -196,7 +198,7 @@ export async function getMonthOverview(
     goals: goalPlan,
     health,
     thresholds: { greenBp: settings.greenThresholdBp, yellowBp: settings.yellowThresholdBp },
-    accountBalance: { cents: settings.accountBalanceCents, date: settings.accountBalanceDate },
+    accountBalance: balance,
     incomes,
     payables,
     paidItems,

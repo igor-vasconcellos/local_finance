@@ -2,14 +2,13 @@
 
 import { refresh } from "next/cache";
 import { z } from "zod";
-import { parseBRL } from "@/lib/money";
 import { monthlyToAnnualPct, parsePct, pctToBp } from "@/lib/rates";
 import { dateField } from "@/lib/validation/finance";
 import { requireWriteUserId } from "@/server/access/guard";
 import { requireSession } from "@/server/auth/current";
 import { AVATAR_COLORS } from "@/lib/profile";
 import { updateAvatarColor, updateUserName } from "@/server/auth/users";
-import { deleteCdiRate, setCdiRate, updateAccountBalance, updateThresholds } from "@/server/finance/settings";
+import { deleteCdiRate, setCdiRate, updateThresholds } from "@/server/finance/settings";
 import { formObject, invalid, parseId, type ActionState } from "./form-state";
 
 export async function saveNameAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
@@ -22,30 +21,6 @@ export async function saveNameAction(_prev: ActionState, fd: FormData): Promise<
     .safeParse(formObject(fd));
   if (!parsed.success) return invalid(parsed.error);
   await updateUserName(user.id, parsed.data.name);
-  refresh();
-  return { ok: true };
-}
-
-export async function saveBalanceAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const uid = await requireWriteUserId();
-  const parsed = z
-    .object({
-      balance: z.string().transform((v, ctx) => {
-        const negative = v.trim().startsWith("-");
-        const cents = parseBRL(v.replace("-", ""));
-        if (cents === null) {
-          ctx.addIssue({ code: "custom", message: "Informe o saldo." });
-          return z.NEVER;
-        }
-        return negative ? -cents : cents;
-      }),
-      negative: z.string().optional(),
-      date: dateField,
-    })
-    .safeParse(formObject(fd));
-  if (!parsed.success) return invalid(parsed.error);
-  const cents = parsed.data.negative === "on" ? -Math.abs(parsed.data.balance) : parsed.data.balance;
-  await updateAccountBalance(uid, cents, parsed.data.date);
   refresh();
   return { ok: true };
 }

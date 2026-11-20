@@ -1,4 +1,5 @@
 import "server-only";
+import { recordMovement } from "./ledger";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { first, touched } from "@/db/query";
@@ -146,15 +147,20 @@ export async function effectivateSimulation(uid: number, id: number): Promise<Si
         sim.id,
       );
     } else {
-      await tx.insert(oneTimeExpenses).values({
-        userId: uid,
-        description: sim.description,
-        categoryId: sim.categoryId,
-        amountCents: sim.totalCents,
-        date: sim.purchaseDate,
-        simulationId: sim.id,
-        notes: "Efetivada pelo simulador",
-      });
+      const [row] = await tx
+        .insert(oneTimeExpenses)
+        .values({
+          userId: uid,
+          description: sim.description,
+          categoryId: sim.categoryId,
+          amountCents: sim.totalCents,
+          date: sim.purchaseDate,
+          simulationId: sim.id,
+          notes: "Efetivada pelo simulador",
+        })
+        .returning({ id: oneTimeExpenses.id });
+      // Débito/Pix sai da conta na data da compra.
+      await recordMovement(tx, uid, "one_time", { oneTimeId: row.id }, -sim.totalCents, sim.purchaseDate, sim.description);
     }
     await tx
       .update(simulations)

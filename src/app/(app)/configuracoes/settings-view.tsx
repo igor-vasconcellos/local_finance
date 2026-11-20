@@ -10,21 +10,19 @@ import { Guide } from "./guide";
 import { SettingsNav } from "./settings-nav";
 import { useFormAction } from "@/components/finance/use-form-action";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import Link from "next/link";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Field, fieldControlProps } from "@/components/ui/field";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
-import { MoneyInput } from "@/components/ui/money-input";
 import { Card } from "@/components/ui/page";
 import { Segmented } from "@/components/ui/segmented";
 import { formatDate, type ISODate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
-import { formatAmount, formatBRL } from "@/lib/money";
 import { annualToMonthlyPct, bpToPct, formatPct, monthlyToAnnualPct, parsePct } from "@/lib/rates";
 import {
   deleteCdiAction,
-  saveBalanceAction,
   saveCdiAction,
   saveAvatarColorAction,
   saveNameAction,
@@ -59,7 +57,7 @@ export function SettingsView(props: Props) {
 
       <div className="grid min-w-0 gap-6">
         <AccountSection user={props.user} />
-        <BalanceSection settings={props.settings} today={props.today} />
+        <BalanceSection />
         <CdiSection rates={props.cdiRates} current={props.currentCdi} today={props.today} />
         <HealthSection settings={props.settings} />
         <SecuritySection {...props} />
@@ -171,41 +169,21 @@ function AvatarColorPicker({ name, color }: { name: string; color: string | null
 
 // ---------------------------------------------------------- Saldo em conta --
 
-function BalanceSection({ settings, today }: { settings: AppSettings; today: ISODate }) {
-  const { state, onSubmit, pending } = useFormAction(saveBalanceAction);
-  const f = state.fields ?? {};
-  const current = settings.accountBalanceCents;
+function BalanceSection() {
   return (
     <Section
       id="saldo"
       icon={<Landmark />}
       title="Saldo em conta corrente"
-      description="Entra no patrimônio líquido: saldo em conta + caixinhas − o que falta pagar nos cartões."
+      description="O saldo agora fica na Visão geral e se atualiza sozinho a cada confirmação."
     >
-      {current !== null && (
-        <p className="mb-4 text-sm text-muted-foreground">
-          Atual: <strong className="text-foreground tabular-nums">{formatBRL(current)}</strong>
-          {settings.accountBalanceDate && <> · informado em {formatDate(settings.accountBalanceDate)}</>}
-        </p>
-      )}
-      <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-[1fr_180px]" noValidate>
-        <Field id="balance" label="Saldo" error={f.balance}>
-          <MoneyInput {...fieldControlProps("balance", f.balance)} name="balance" defaultValue={current !== null ? formatAmount(Math.abs(current)) : ""} />
-        </Field>
-        <Field id="date" label="Data do saldo" error={f.date}>
-          <DateInput {...fieldControlProps("date", f.date)} name="date" defaultValue={today} />
-        </Field>
-        <label className="flex items-center gap-2 text-sm sm:col-span-2">
-          <input type="checkbox" name="negative" defaultChecked={current !== null && current < 0} className="size-4 accent-[var(--primary)]" />
-          Saldo negativo (cheque especial)
-        </label>
-        <div className="flex items-center gap-3 sm:col-span-2">
-          <Button type="submit" loading={pending}>
-            Atualizar saldo
-          </Button>
-          <Saved state={state} message="Saldo atualizado." />
-        </div>
-      </form>
+      <p className="text-sm text-muted-foreground">
+        Rendas recebidas, contas e faturas pagas, gastos avulsos e aportes/resgates de caixinhas entram no extrato
+        automaticamente. Para corrigir o valor, use <strong className="text-foreground">Ajustar</strong> no card de saldo.
+      </p>
+      <Link href="/dashboard" className={buttonVariants({ variant: "secondary", className: "mt-4" })}>
+        Abrir a Visão geral
+      </Link>
     </Section>
   );
 }

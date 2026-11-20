@@ -236,7 +236,7 @@ const TOPICS: Topic[] = [
           <strong>Conta</strong>: nome e cor do seu avatar.
         </li>
         <li>
-          <strong>Saldo em conta</strong>: entra no patrimônio líquido. Atualize quando quiser que o patrimônio reflita o banco.
+          <strong>Saldo em conta</strong>: fica na Visão geral e se atualiza sozinho quando você confirma recebimentos, pagamentos, faturas e movimentações de caixinhas. Use “Ajustar” se o banco mostrar outro valor.
         </li>
         <li>
           <strong>CDI</strong>: informe por mês (como no app do banco) ou por ano; o app converte e guarda o histórico.
