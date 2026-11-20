@@ -3,7 +3,8 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { first } from "@/db/query";
 import { incomeSources, monthlySettlements, recurringExpenses } from "@/db/schema";
-import type { Month } from "@/lib/dates";
+import { todayISO, type ISODate, type Month } from "@/lib/dates";
+import { recordMovement, removeSettlementMovement } from "./ledger";
 
 export type SettlementKind = "income" | "expense";
 
@@ -17,40 +18,65 @@ export async function setSettled(
   sourceId: number,
   month: Month,
   settled: boolean,
+  opts: { amountCents?: number; date?: ISODate } = {},
 ): Promise<boolean> {
   const col = kind === "income" ? monthlySettlements.incomeId : monthlySettlements.expenseId;
 
   if (!settled) {
-    await db
-      .delete(monthlySettlements)
-      .where(and(eq(col, sourceId), eq(monthlySettlements.month, month), eq(monthlySettlements.userId, uid)));
+    await db.transaction(async (tx) => {
+      const rows = await tx
+        .select({ id: monthlySettlements.id })
+        .from(monthlySettlements)
+        .where(and(eq(col, sourceId), eq(monthlySettlements.month, month), eq(monthlySettlements.userId, uid)));
+      for (const r of rows) await removeSettlementMovement(tx, uid, r.id);
+      await tx
+        .delete(monthlySettlements)
+        .where(and(eq(col, sourceId), eq(monthlySettlements.month, month), eq(monthlySettlements.userId, uid)));
+    });
     return true;
   }
 
   const source =
     kind === "income"
       ? await db
-          .select({ amount: incomeSources.amountCents })
+          .select({ amount: incomeSources.amountCents, name: incomeSources.name })
           .from(incomeSources)
           .where(and(eq(incomeSources.id, sourceId), eq(incomeSources.userId, uid)))
           .then(first)
       : await db
-          .select({ amount: recurringExpenses.amountCents })
+          .select({ amount: recurringExpenses.amountCents, name: recurringExpenses.name })
           .from(recurringExpenses)
           .where(and(eq(recurringExpenses.id, sourceId), eq(recurringExpenses.userId, uid)))
           .then(first);
   if (!source) return false;
 
-  await db
-    .insert(monthlySettlements)
-    .values({
-      userId: uid,
-      incomeId: kind === "income" ? sourceId : null,
-      expenseId: kind === "expense" ? sourceId : null,
-      month,
-      amountCents: source.amount,
-    })
-    .onConflictDoNothing();
+  // Valor real confirmado (pode ser diferente do previsto).
+  const amount = opts.amountCents && opts.amountCents > 0 ? opts.amountCents : source.amount;
+  const date = opts.date ?? todayISO();
+
+  await db.transaction(async (tx) => {
+    const inserted = await tx
+      .insert(monthlySettlements)
+      .values({
+        userId: uid,
+        incomeId: kind === "income" ? sourceId : null,
+        expenseId: kind === "expense" ? sourceId : null,
+        month,
+        amountCents: amount,
+      })
+      .onConflictDoNothing()
+      .returning({ id: monthlySettlements.id });
+    if (!inserted[0]) return; // já estava confirmado
+    await recordMovement(
+      tx,
+      uid,
+      kind,
+      { settlementId: inserted[0].id },
+      kind === "income" ? amount : -amount,
+      date,
+      kind === "income" ? `Recebido: ${source.name}` : `Pago: ${source.name}`,
+    );
+  });
   return true;
 }
 

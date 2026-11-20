@@ -50,6 +50,7 @@ const TABLES: { file: string; query: (uid: number) => SQL }[] = [
       sql`select x.* from simulation_installments x join simulations s on s.id = x.simulation_id where s.user_id = ${u} order by x.id`,
   },
   { file: "fechamentos_mensais", query: (u) => sql`select * from monthly_settlements where user_id = ${u} order by id` },
+  { file: "extrato_conta", query: (u) => sql`select * from account_movements where user_id = ${u} order by date, id` },
   { file: "configuracoes", query: (u) => sql`select * from settings where user_id = ${u}` },
   { file: "taxas_cdi", query: (u) => sql`select * from cdi_rates where user_id = ${u} order by id` },
 ];

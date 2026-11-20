@@ -21,7 +21,8 @@ import { createCard, createPurchase, setInvoicePaid } from "@/server/finance/car
 import { createExpense, updateExpense } from "@/server/finance/expenses";
 import { createIncome } from "@/server/finance/incomes";
 import { getCategoryReport, getMonthOverview, healthOf } from "@/server/finance/overview";
-import { cdiRateOn, deleteCdiRate, listCdiRates, setCdiRate, updateAccountBalance } from "@/server/finance/settings";
+import { cdiRateOn, deleteCdiRate, listCdiRates, setCdiRate } from "@/server/finance/settings";
+import { setBalance } from "@/server/finance/ledger";
 import { setSettled } from "@/server/finance/settlements";
 
 const M = "2026-12";
@@ -181,7 +182,7 @@ describe("painel do mês", () => {
   it("patrimônio = saldo em conta + caixinhas − dívidas dos cartões", async () => {
     await seed();
     await setCdiRate(uid, 1365, "2026-01-01");
-    await updateAccountBalance(uid, 500000, TODAY);
+    await setBalance(uid, 500000, TODAY);
     const inst = (await db.insert(institutions).values({ userId: uid, name: "Banco" }).returning().then(first))!;
     const box = (await db
       .insert(savingsBoxes)
