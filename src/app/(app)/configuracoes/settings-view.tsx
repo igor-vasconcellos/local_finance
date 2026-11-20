@@ -8,6 +8,7 @@ import { Avatar } from "@/components/layout/avatar";
 import { AVATAR_COLORS } from "@/lib/profile";
 import { Guide } from "./guide";
 import { SettingsNav } from "./settings-nav";
+import { ActivitySection, type ActivityItem, type DeviceItem } from "./activity-section";
 import { useFormAction } from "@/components/finance/use-form-action";
 import { Alert } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -33,6 +34,8 @@ import type { AppSettings, CdiRate } from "@/server/finance/settings";
 
 type Props = {
   user: { name: string; maskedEmail: string; avatarColor: string | null };
+  devices: DeviceItem[];
+  activity: ActivityItem[];
   sessionExpiresAt: string;
   mailViaSmtp: boolean;
   settings: AppSettings;
@@ -369,10 +372,10 @@ function HealthSection({ settings }: { settings: AppSettings }) {
 
 // ------------------------------------------------------------- Segurança --
 
-function SecuritySection({ user, mailViaSmtp, sessionExpiresAt }: Props) {
+function SecuritySection({ user, mailViaSmtp, sessionExpiresAt, devices, activity }: Props) {
   const expires = new Date(sessionExpiresAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
   return (
-    <Section id="seguranca" icon={<ShieldCheck />} title="Segurança" description="Login em duas etapas e sessão.">
+    <Section id="seguranca" icon={<ShieldCheck />} title="Segurança" description="Login em duas etapas, aparelhos conectados e sua atividade.">
       <dl className="grid gap-4 text-sm sm:grid-cols-2">
         <div>
           <dt className="text-muted-foreground">Verificação em duas etapas</dt>
@@ -392,6 +395,7 @@ function SecuritySection({ user, mailViaSmtp, sessionExpiresAt }: Props) {
           código para o seu e-mail e você cria uma senha nova.
         </p>
       </div>
+      <ActivitySection devices={devices} activity={activity} />
     </Section>
   );
 }

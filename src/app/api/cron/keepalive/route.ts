@@ -3,11 +3,13 @@ import { db } from "@/db/client";
 import { authChallenges, sessions } from "@/db/schema";
 import { env } from "@/env";
 import { purgeRateLimits } from "@/server/auth/rate-limit";
+import { purgeOldSecurityData } from "@/server/security/events";
 
 /**
  * Tarefa diária (Vercel Cron, ver vercel.json):
  * - mantém o projeto gratuito do Supabase ativo (ele pausa após 7 dias sem uso);
- * - faz a faxina de sessões vencidas, códigos antigos e contadores de tentativas.
+ * - faz a faxina de sessões vencidas, códigos antigos e contadores de tentativas;
+ * - apaga eventos de segurança e auditoria com mais de 12 meses (LGPD).
  * Com CRON_SECRET definido, só aceita "Authorization: Bearer <CRON_SECRET>" (a Vercel envia sozinha).
  */
 export async function GET(request: Request) {
@@ -22,5 +24,6 @@ export async function GET(request: Request) {
   await db.delete(sessions).where(or(lt(sessions.expiresAt, now.toISOString()), isNotNull(sessions.revokedAt)));
   await db.delete(authChallenges).where(lt(authChallenges.createdAt, dayAgo));
   await purgeRateLimits(now);
+  await purgeOldSecurityData(now);
   return Response.json({ ok: true, at: now.toISOString() });
 }

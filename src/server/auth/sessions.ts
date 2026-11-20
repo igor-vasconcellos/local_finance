@@ -1,6 +1,6 @@
 import "server-only";
 import crypto from "node:crypto";
-import { and, eq, isNotNull, isNull, lt, or } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, lt, ne, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { first } from "@/db/query";
 import { sessions } from "@/db/schema";
@@ -78,4 +78,45 @@ export async function revokeSession(jwt: string | undefined, now: Date = new Dat
     .update(sessions)
     .set({ revokedAt: now.toISOString() })
     .where(eq(sessions.id, sha256(claims.sid)));
+}
+
+export type ActiveSession = { id: string; userAgent: string | null; ip: string | null; createdAt: string; lastSeenAt: string };
+
+/** Sessões abertas da conta (para "aparelhos conectados"). */
+export async function listActiveSessions(uid: number, now: Date = new Date()): Promise<ActiveSession[]> {
+  const rows = await db
+    .select({
+      id: sessions.id,
+      userAgent: sessions.userAgent,
+      ip: sessions.ip,
+      createdAt: sessions.createdAt,
+      lastSeenAt: sessions.lastSeenAt,
+      expiresAt: sessions.expiresAt,
+    })
+    .from(sessions)
+    .where(and(eq(sessions.userId, uid), isNull(sessions.revokedAt)));
+  return rows
+    .filter((r) => r.expiresAt > now.toISOString())
+    .sort((a, b) => b.lastSeenAt.localeCompare(a.lastSeenAt))
+    .map(({ expiresAt: _e, ...r }) => r);
+}
+
+/** Encerra uma sessão da PRÓPRIA conta (o id precisa ser dela). */
+export async function revokeOwnSession(uid: number, id: string, now: Date = new Date()): Promise<boolean> {
+  const rows = await db
+    .update(sessions)
+    .set({ revokedAt: now.toISOString() })
+    .where(and(eq(sessions.id, id), eq(sessions.userId, uid), isNull(sessions.revokedAt)))
+    .returning({ id: sessions.id });
+  return rows.length > 0;
+}
+
+/** Encerra todas as sessões da conta, menos a atual. */
+export async function revokeOtherSessions(uid: number, keepId: string, now: Date = new Date()): Promise<number> {
+  const rows = await db
+    .update(sessions)
+    .set({ revokedAt: now.toISOString() })
+    .where(and(eq(sessions.userId, uid), isNull(sessions.revokedAt), ne(sessions.id, keepId)))
+    .returning({ id: sessions.id });
+  return rows.length;
 }
