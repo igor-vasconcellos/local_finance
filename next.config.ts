@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
 
   experimental: {
     // Faturas em PDF passam de 1 MB (limite padrão das Server Actions).
-    serverActions: { bodySizeLimit: "10mb" },
+    serverActions: { bodySizeLimit: "6mb" },
   },
 
   poweredByHeader: false,

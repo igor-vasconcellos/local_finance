@@ -153,6 +153,15 @@ reinicie o servidor. Se o SMTP falhar, o código é impresso no terminal como fa
 - Faturas reais têm dados pessoais e **nunca** entram no repositório: os testes usam cópias do
   formato com dados fictícios.
 
+### Painel admin e controle de acesso (Etapa 10)
+
+- A conta definida em `ADMIN_EMAILS` (com e-mail confirmado) vê **Painel admin** no menu. Para qualquer outra conta, `/admin` responde "Página não encontrada".
+- **Usuários:** bloquear (com motivo; a pessoa é desconectada), desbloquear, cortesia (permanente ou até uma data) e encerrar sessões. Contas de admin não podem ser alteradas pelo painel.
+- **Conta bloqueada:** entra só para consulta. Um modal mostra o motivo, permite **Exportar meus dados** (.zip com CSVs) e reabre a cada tentativa de alteração; o servidor recusa toda escrita.
+- **Funcionalidades:** travar Caixinhas, Simulador ou Importação de faturas para todos (o admin continua usando), com mensagem opcional.
+- **Auditoria:** toda ação do painel fica registrada (quem, o quê, em quem, quando e IP). O painel nunca mostra dados financeiros dos usuários.
+- **Upload de faturas:** o tipo é decidido pelo conteúdo do arquivo (não pelo nome), até 5 MB, 40 páginas, 15 s de leitura e 30 envios por hora; nada é salvo em disco.
+
 ### Interface
 
 - **Datas** sempre em dd/mm/aaaa (independe do idioma do navegador): digite só os
@@ -277,3 +286,5 @@ faxina de sessões vencidas e códigos antigos.
 - [x] **Etapa 7** — Importação de fatura (Nubank CSV, PicPay e Mercado Pago PDF)
 - [x] **Etapa 8** — Várias contas com dados separados, cadastro com e-mail confirmado e senha forte, "Esqueci minha senha"
 - [x] **Etapa 9** — Hospedagem na Vercel + Supabase (Postgres), limite por IP, backup e tarefa diária
+- [x] **Etapa 10** — Painel admin: bloqueio, cortesia, travas de funções, auditoria, exportação de dados e upload endurecido
+- [ ] **Etapa 11** — Pagamento (Mercado Pago): R$ 39/mês, 7 dias grátis
