@@ -1,6 +1,6 @@
 # 💜 BeaconFinance
 
-Gerenciador financeiro pessoal na nuvem: rendas, gastos fixos, cartões com faturas
+Gerenciador financeiro pessoal na nuvem: rendas, despesas, cartões com faturas
 parceladas (e importação da fatura do banco), caixinhas rendendo % do CDI, simulador de
 compras com farol de saúde financeira e dashboards mensais / semestrais / anuais.
 Cada pessoa tem a própria conta, com os dados separados.
@@ -74,7 +74,7 @@ reinicie o servidor. Se o SMTP falhar, o código é impresso no terminal como fa
 ### Cadastros (Etapa 3)
 
 - **Rendas** — salário, pró-labore e extras; mensais (com início e término opcional) ou únicas.
-- **Gastos fixos** — aluguel, contas, assinaturas; com categoria e dia de vencimento.
+- **Despesas** — aba **Fixas** (aluguel, contas, assinaturas; repetição “todo mês, sem fim” ou “todo mês até…”) e aba **Avulsas** (acontecem uma vez só, com data). Fixas e avulsas ficam em “Próximos vencimentos” até serem marcadas como pagas. O antigo `/gastos` redireciona para `/despesas`.
 - **Cartões** — limite, dia de fechamento e de vencimento. Cada compra (à vista ou em até
   48x) gera as parcelas automaticamente nas faturas certas:
   - compra **antes** do dia de fechamento → fatura que fecha naquele mês;
@@ -119,11 +119,11 @@ reinicie o servidor. Se o SMTP falhar, o código é impresso no terminal como fa
   **débito/Pix** (valor inteiro no mês) e veja na hora o impacto nos próximos 12 meses:
   saldo livre antes × depois, gráfico e o **farol** de cada mês (com aviso quando piora
   ou fica negativo, e quando passa do limite disponível do cartão).
-- Saldo livre = rendas previstas − (gastos fixos + faturas que vencem no mês + gastos
-  avulsos + metas das caixinhas + simulações salvas consideradas).
+- Saldo livre = rendas previstas − (despesas fixas + faturas que vencem no mês + despesas
+  avulsas + metas das caixinhas + simulações salvas consideradas).
 - **Simulações salvas** podem entrar ou sair do cenário (👁) para comparar opções.
 - **Efetivar** transforma a simulação em lançamento real: no crédito vira compra no
-  cartão; no débito vira um gasto avulso (listado em Gastos fixos → Gastos avulsos).
+  cartão; no débito vira uma despesa avulsa (Despesas → Avulsas): já paga se a data passou, pendente se for futura.
 
 ### Dashboards (Etapa 6)
 
@@ -155,7 +155,7 @@ reinicie o servidor. Se o SMTP falhar, o código é impresso no terminal como fa
 
 ### Saldo em conta (calculado)
 
-- O card **Saldo em conta** (primeiro da Visão geral) é calculado sozinho — ninguém digita o valor: rendas marcadas como **Recebi** − gastos fixos marcados como **Pagar** − faturas pagas − gastos avulsos já ocorridos.
+- O card **Saldo em conta** (primeiro da Visão geral) é calculado sozinho — ninguém digita o valor: rendas marcadas como **Recebi** − despesas fixas e avulsas marcadas como **Pagar** − faturas pagas.
 - A **sobra de um mês passa para o seguinte** (saldo acumulado até o mês escolhido). Caixinhas não mexem no saldo.
 - **Recebi / Pagar** abre uma janela com o valor previsto para informar o valor real. **Desfazer** devolve.
 - **Ver extrato** mostra a sobra anterior, o que entrou e saiu no mês e o saldo.

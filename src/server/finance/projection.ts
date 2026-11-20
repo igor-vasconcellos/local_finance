@@ -36,7 +36,7 @@ export type ProjectionMonth = {
 
 /**
  * Fluxo de caixa previsto mês a mês:
- * livre = rendas previstas − (gastos fixos + faturas que vencem no mês + avulsos + metas) − simulações.
+ * livre = rendas previstas − (despesas fixas + faturas que vencem no mês + despesas avulsas + metas) − simulações.
  */
 export async function projectMonths(
   uid: number,

@@ -36,6 +36,13 @@
       "when": 1795146508489,
       "tag": "0004_security_events",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795203992790,
+      "tag": "0005_despesas_avulsas",
+      "breakpoints": true
     }
   ]
 }

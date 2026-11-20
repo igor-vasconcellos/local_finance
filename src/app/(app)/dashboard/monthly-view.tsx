@@ -23,6 +23,7 @@ import { formatBRL } from "@/lib/money";
 import { formatPct } from "@/lib/rates";
 import { cn } from "@/lib/utils";
 import { setInvoicePaidAction } from "@/server/actions/cards";
+import { setOneTimePaidAction } from "@/server/actions/expenses";
 import { toggleSettlementAction } from "@/server/actions/overview";
 import { getCategoryReport, getMonthOverview } from "@/server/finance/overview";
 
@@ -105,9 +106,6 @@ export async function MonthlyView({
               .filter((i) => i.settled)
               .map((i) => ({ key: `i${i.id}`, date: i.date, description: i.name, amountCents: i.amountCents })),
             ...o.paidItems.map((p) => ({ key: `${p.kind}${p.id}`, date: p.date, description: p.name, amountCents: -p.amountCents })),
-            ...o.oneTime
-              .filter((x) => x.date <= today)
-              .map((x) => ({ key: `o${x.id}`, date: x.date, description: x.description, amountCents: -x.amountCents })),
           ].sort((a, b) => a.date.localeCompare(b.date))}
         />
         <Kpi
@@ -179,6 +177,8 @@ export async function MonthlyView({
                         <span className="font-medium text-danger">Venceu em {formatDate(p.date)}</span>
                       ) : p.kind === "invoice" ? (
                         "Cartão de crédito"
+                      ) : p.kind === "one_time" ? (
+                        `Despesa avulsa${p.categoryName ? ` · ${p.categoryName}` : ""}`
                       ) : (
                         p.categoryName
                       )}
@@ -189,6 +189,8 @@ export async function MonthlyView({
                   </p>
                   {p.kind === "invoice" ? (
                     <InvoiceForm cardId={p.cardId} month={month} paid={false} label="Pagar" />
+                  ) : p.kind === "one_time" ? (
+                    <OneTimeForm id={p.id} paid={false} label="Pagar" />
                   ) : (
                     <ConfirmMovementButton
                       target={{ kind: "expense", id: p.id, month }}
@@ -238,6 +240,8 @@ export async function MonthlyView({
                     <span className="tabular-nums">{formatBRL(p.amountCents)}</span>
                     {p.kind === "invoice" ? (
                       <InvoiceForm cardId={p.id} month={month} paid label="Desfazer" />
+                    ) : p.kind === "one_time" ? (
+                      <OneTimeForm id={p.id} paid label="Desfazer" />
                     ) : (
                       <SettleForm kind="expense" id={p.id} month={month} settled label="Desfazer" />
                     )}
@@ -500,6 +504,16 @@ function InvoiceForm({ cardId, month, paid, label }: { cardId: number; month: st
     <form action={setInvoicePaidAction}>
       <input type="hidden" name="cardId" value={cardId} />
       <input type="hidden" name="month" value={month} />
+      <input type="hidden" name="paid" value={String(!paid)} />
+      <CheckButton done={paid} label={label} />
+    </form>
+  );
+}
+
+function OneTimeForm({ id, paid, label }: { id: number; paid: boolean; label: string }) {
+  return (
+    <form action={setOneTimePaidAction}>
+      <input type="hidden" name="id" value={id} />
       <input type="hidden" name="paid" value={String(!paid)} />
       <CheckButton done={paid} label={label} />
     </form>

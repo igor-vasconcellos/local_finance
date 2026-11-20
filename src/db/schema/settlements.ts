@@ -5,7 +5,7 @@ import { users } from "./auth";
 import { incomeSources, recurringExpenses } from "./base";
 
 /**
- * Confirmação manual de que uma renda foi RECEBIDA ou um gasto fixo foi PAGO
+ * Confirmação manual de que uma renda foi RECEBIDA ou uma despesa fixa foi PAGA
  * em determinado mês. Sem registro = pendente ("a receber" / "a pagar").
  * O valor é guardado no momento da confirmação: se a renda/gasto mudar de
  * valor depois, os meses já confirmados não são alterados.
