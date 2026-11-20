@@ -1,4 +1,5 @@
 import "server-only";
+import { removeInvoiceMovement } from "@/server/finance/ledger";
 import { createHash } from "node:crypto";
 import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -495,6 +496,8 @@ export async function undoImport(uid: number, cardId: number, importId: number):
         .update(invoices)
         .set({ status: "open", paidAt: null })
         .where(and(inArray(invoices.id, paidIds), eq(invoices.cardId, cardId)));
+      // Fatura volta a "aberta": se ela tinha saído do saldo em conta, o valor volta.
+      for (const id of paidIds) await removeInvoiceMovement(tx, uid, id);
     }
     await tx.delete(invoiceImports).where(eq(invoiceImports.id, importId));
     await cleanupEmptyInvoices(tx, cardId);

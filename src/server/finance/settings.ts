@@ -31,10 +31,6 @@ export async function updateThresholds(uid: number, greenBp: number, yellowBp: n
   await db.update(settings).set({ greenThresholdBp: greenBp, yellowThresholdBp: yellowBp }).where(eq(settings.userId, uid));
 }
 
-export async function updateAccountBalance(uid: number, cents: number, date: ISODate) {
-  await getSettings(uid);
-  await db.update(settings).set({ accountBalanceCents: cents, accountBalanceDate: date }).where(eq(settings.userId, uid));
-}
 
 // ------------------------------------------------------------------ CDI --
 

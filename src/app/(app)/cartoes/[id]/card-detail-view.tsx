@@ -2,7 +2,6 @@
 
 import {
   ArrowLeft,
-  CheckCircle2,
   FileUp,
   History,
   Pause,
@@ -30,6 +29,7 @@ import { Card } from "@/components/ui/page";
 import { formatDate, formatDayMonth, formatMonthLong, formatMonthShort, type ISODate, type Month } from "@/lib/dates";
 import { formatBRL } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { ConfirmMovementButton } from "@/components/finance/confirm-movement";
 import { deleteCardAction, deletePurchaseAction, setInvoicePaidAction, toggleCardAction } from "@/server/actions/cards";
 import { deleteCreditAction, undoImportAction } from "@/server/actions/imports";
 import type { getInvoiceDetail, PurchaseRow } from "@/server/finance/cards";
@@ -209,22 +209,25 @@ export function CardDetailView({
           </div>
           <div className="flex items-center gap-4">
             <p className="text-2xl font-semibold tracking-tight tabular-nums">{formatBRL(invoice.totalCents)}</p>
-            {invoice.exists && (
-              <form action={setInvoicePaidAction}>
-                <input type="hidden" name="cardId" value={card.id} />
-                <input type="hidden" name="month" value={invoice.referenceMonth} />
-                <input type="hidden" name="paid" value={String(invoice.status !== "paid")} />
-                {invoice.status === "paid" ? (
+            {invoice.exists &&
+              (invoice.status === "paid" ? (
+                <form action={setInvoicePaidAction}>
+                  <input type="hidden" name="cardId" value={card.id} />
+                  <input type="hidden" name="month" value={invoice.referenceMonth} />
+                  <input type="hidden" name="paid" value="false" />
                   <Button type="submit" variant="ghost" size="sm">
                     <RotateCcw aria-hidden /> Reabrir
                   </Button>
-                ) : (
-                  <Button type="submit" variant="secondary" size="sm">
-                    <CheckCircle2 aria-hidden /> Marcar como paga
-                  </Button>
-                )}
-              </form>
-            )}
+                </form>
+              ) : (
+                <ConfirmMovementButton
+                  appearance="button"
+                  target={{ kind: "invoice", cardId: card.id, month: invoice.referenceMonth }}
+                  name={`Fatura ${card.name}`}
+                  amountCents={invoice.totalCents}
+                  label="Marcar como paga"
+                />
+              ))}
           </div>
         </div>
 

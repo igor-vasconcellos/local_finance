@@ -45,9 +45,18 @@ export function monthOf(date: ISODate): Month {
   return date.slice(0, 7);
 }
 
-/** Data local de hoje em "YYYY-MM-DD" (no fuso do computador). */
+/** Fuso do app: o servidor (Vercel) roda em UTC, mas o "hoje" do usuário é o de Brasília. */
+export const APP_TIME_ZONE = "America/Sao_Paulo";
+const dayFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: APP_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** Data de hoje em "YYYY-MM-DD" no fuso de Brasília (igual no servidor e no navegador). */
 export function todayISO(now: Date = new Date()): ISODate {
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  return dayFormatter.format(now);
 }
 
 export function currentMonth(now: Date = new Date()): Month {

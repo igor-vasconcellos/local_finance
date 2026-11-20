@@ -6,13 +6,14 @@ import {
   CircleDollarSign,
   CreditCard,
   FlaskConical,
-  Landmark,
   PiggyBank,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { BalanceCard } from "@/components/finance/balance-card";
 import { CheckButton } from "@/components/finance/check-button";
+import { ConfirmMovementButton } from "@/components/finance/confirm-movement";
 import { HealthBadge } from "@/components/finance/health-badge";
 import { InvoiceStatusBadge } from "@/components/finance/invoice-status";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,8 @@ import { formatPct } from "@/lib/rates";
 import { cn } from "@/lib/utils";
 import { setInvoicePaidAction } from "@/server/actions/cards";
 import { toggleSettlementAction } from "@/server/actions/overview";
+import { getAccessCached } from "@/server/access/service";
+import { listMovements } from "@/server/finance/ledger";
 import { getCategoryReport, getMonthOverview } from "@/server/finance/overview";
 
 /** Visão mensal do painel (resumo, vencimentos, entradas, faturas e categorias). */
@@ -39,7 +42,12 @@ export async function MonthlyView({
   today: ISODate;
   sim: boolean;
 }) {
-  const o = await getMonthOverview(uid, month, today, { includeSimulations: sim });
+  const [o, movements, access] = await Promise.all([
+    getMonthOverview(uid, month, today, { includeSimulations: sim }),
+    listMovements(uid, 40, today),
+    getAccessCached(uid),
+  ]);
+  const readOnly = access?.readOnly ?? false;
   const report = await getCategoryReport(uid, month);
   const t = o.totals;
   const freePct = t.totalIncome > 0 ? (t.forecast / t.totalIncome) * 100 : null;
@@ -92,6 +100,14 @@ export async function MonthlyView({
 
       {/* Indicadores */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <BalanceCard
+          balance={o.accountBalance.cents}
+          netWorth={t.netWorth}
+          reserve={t.reserve}
+          debts={t.debts}
+          movements={movements}
+          readOnly={readOnly}
+        />
         <Kpi
           label="Total recebido"
           value={t.received}
@@ -139,21 +155,6 @@ export async function MonthlyView({
             )
           }
         />
-        <Kpi
-          label="Patrimônio líquido"
-          value={t.netWorth}
-          icon={<Landmark />}
-          tone="primary"
-          hint={
-            o.accountBalance.cents === null ? (
-              <Link href="/configuracoes#saldo" className="text-primary hover:underline">
-                Informe o saldo em conta →
-              </Link>
-            ) : (
-              `Conta + reserva − ${formatBRL(t.debts)} a pagar nos cartões`
-            )
-          }
-        />
       </div>
 
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
@@ -185,9 +186,19 @@ export async function MonthlyView({
                     {formatBRL(p.kind === "invoice" ? p.totalCents : p.amountCents)}
                   </p>
                   {p.kind === "invoice" ? (
-                    <InvoiceForm cardId={p.cardId} month={month} paid={false} label="Pagar" />
+                    <ConfirmMovementButton
+                      target={{ kind: "invoice", cardId: p.cardId, month }}
+                      name={`Fatura ${p.cardName}`}
+                      amountCents={p.totalCents}
+                      label="Pagar"
+                    />
                   ) : (
-                    <SettleForm kind="expense" id={p.id} month={month} settled={false} label="Pagar" />
+                    <ConfirmMovementButton
+                      target={{ kind: "expense", id: p.id, month }}
+                      name={p.name}
+                      amountCents={p.amountCents}
+                      label="Pagar"
+                    />
                   )}
                 </li>
               ))}
@@ -264,13 +275,16 @@ export async function MonthlyView({
                   <p className={cn("text-sm font-semibold tabular-nums", !i.settled && "text-success")}>
                     {formatBRL(i.amountCents)}
                   </p>
-                  <SettleForm
-                    kind="income"
-                    id={i.id}
-                    month={month}
-                    settled={i.settled}
-                    label={i.settled ? "Desfazer" : "Recebi"}
-                  />
+                  {i.settled ? (
+                    <SettleForm kind="income" id={i.id} month={month} settled label="Desfazer" />
+                  ) : (
+                    <ConfirmMovementButton
+                      target={{ kind: "income", id: i.id, month }}
+                      name={i.name}
+                      amountCents={i.amountCents}
+                      label="Recebi"
+                    />
+                  )}
                 </li>
               ))}
             </ul>
