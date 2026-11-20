@@ -39,7 +39,8 @@ export type MonthInvoice = {
 };
 export type Payable =
   | ({ kind: "expense" } & ExpenseOccurrence & { overdue: boolean })
-  | ({ kind: "invoice" } & MonthInvoice & { date: ISODate; overdue: boolean });
+  | ({ kind: "invoice" } & MonthInvoice & { date: ISODate; overdue: boolean })
+  | { kind: "one_time"; id: number; name: string; date: ISODate; amountCents: number; overdue: boolean; categoryName: string | null; categoryColor: string | null };
 
 /** Faturas (com lançamentos) que vencem no mês, de todos os cartões. */
 async function monthInvoices(uid: number, month: Month, today: ISODate): Promise<MonthInvoice[]> {
@@ -89,6 +90,7 @@ async function oneTimeInMonth(uid: number, month: Month) {
       description: oneTimeExpenses.description,
       amountCents: oneTimeExpenses.amountCents,
       date: oneTimeExpenses.date,
+      paid: sql<boolean>`${oneTimeExpenses.paidAt} is not null`,
       categoryName: categories.name,
       categoryColor: categories.color,
     })
@@ -115,7 +117,7 @@ export async function getMonthOverview(
     getSettings(uid),
     totalReserve(uid, today),
     cardDebts(uid),
-    getBalance(uid, month, today),
+    getBalance(uid, month),
   ]);
   const settledIncome = new Map(settled.filter((s) => s.incomeId).map((s) => [s.incomeId!, s.amountCents]));
   const settledExpense = new Map(settled.filter((s) => s.expenseId).map((s) => [s.expenseId!, s.amountCents]));
@@ -152,11 +154,11 @@ export async function getMonthOverview(
   const paid =
     sumOf(expenses.filter((e) => e.settled)) +
     sumOf(cardInvoices.filter((i) => i.status === "paid")) +
-    sumOf(oneTime.filter((o) => o.date <= today));
+    sumOf(oneTime.filter((o) => o.paid));
   const toPay =
     sumOf(expenses.filter((e) => !e.settled)) +
     sumOf(cardInvoices.filter((i) => i.status !== "paid")) +
-    sumOf(oneTime.filter((o) => o.date > today));
+    sumOf(oneTime.filter((o) => !o.paid));
   const goals = goalPlan.total;
   const realized = received - paid;
   const simulatedItems = opts.includeSimulations ? await simulatedItemsForMonth(uid, month) : [];
@@ -174,6 +176,18 @@ export async function getMonthOverview(
     ...cardInvoices
       .filter((i) => i.status !== "paid")
       .map((i) => ({ kind: "invoice" as const, ...i, date: i.dueDate, overdue: i.dueDate < today })),
+    ...oneTime
+      .filter((o) => !o.paid)
+      .map((o) => ({
+        kind: "one_time" as const,
+        id: o.id,
+        name: o.description,
+        date: o.date,
+        amountCents: o.amountCents,
+        overdue: o.date < today,
+        categoryName: o.categoryName,
+        categoryColor: o.categoryColor,
+      })),
   ].sort((a, b) => a.date.localeCompare(b.date));
 
   const paidItems = [
@@ -189,6 +203,9 @@ export async function getMonthOverview(
         date: i.dueDate,
         amountCents: i.totalCents,
       })),
+    ...oneTime
+      .filter((o) => o.paid)
+      .map((o) => ({ kind: "one_time" as const, id: o.id, name: o.description, date: o.date, amountCents: o.amountCents })),
   ].sort((a, b) => a.date.localeCompare(b.date));
 
   return {
@@ -204,8 +221,6 @@ export async function getMonthOverview(
     payables,
     paidItems,
     cardInvoices,
-    /** Gastos avulsos do mês (débito/Pix efetivados pelo simulador). */
-    oneTime,
   };
 }
 
@@ -224,7 +239,7 @@ export type CategoryReportRow = {
   items: CategoryReportItem[];
 };
 
-/** Todas as saídas do mês (gastos fixos + parcelas de cartão + avulsos) agrupadas por categoria. */
+/** Todas as saídas do mês (despesas fixas + parcelas de cartão + despesas avulsas) agrupadas por categoria. */
 export async function getCategoryReport(uid: number, month: Month): Promise<{ rows: CategoryReportRow[]; totalCents: number }> {
   const groups = new Map<string, CategoryReportRow>();
   const add = (name: string | null, color: string | null, item: CategoryReportItem) => {
@@ -288,7 +303,7 @@ export async function getCategoryReport(uid: number, month: Month): Promise<{ ro
     add(o.categoryName, o.categoryColor, {
       label: o.description,
       source: "avulso",
-      detail: "Débito/Pix",
+      detail: "Despesa avulsa",
       amountCents: o.amountCents,
     });
   }

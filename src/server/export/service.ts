@@ -12,8 +12,8 @@ const TABLES: { file: string; query: (uid: number) => SQL }[] = [
   { file: "categorias", query: (u) => sql`select * from categories where user_id = ${u} order by id` },
   { file: "instituicoes", query: (u) => sql`select * from institutions where user_id = ${u} order by id` },
   { file: "rendas", query: (u) => sql`select * from income_sources where user_id = ${u} order by id` },
-  { file: "gastos_fixos", query: (u) => sql`select * from recurring_expenses where user_id = ${u} order by id` },
-  { file: "gastos_avulsos", query: (u) => sql`select * from one_time_expenses where user_id = ${u} order by id` },
+  { file: "despesas_fixas", query: (u) => sql`select * from recurring_expenses where user_id = ${u} order by id` },
+  { file: "despesas_avulsas", query: (u) => sql`select * from one_time_expenses where user_id = ${u} order by id` },
   { file: "cartoes", query: (u) => sql`select * from credit_cards where user_id = ${u} order by id` },
   {
     file: "faturas",

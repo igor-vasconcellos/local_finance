@@ -80,7 +80,7 @@ export const incomeSources = pgTable(
   ],
 );
 
-/** MÓDULO 2 — Gastos fixos mensais (aluguel, luz, internet, assinaturas…). */
+/** MÓDULO 2 — Despesas fixas mensais (aluguel, luz, internet, assinaturas…). */
 export const recurringExpenses = pgTable(
   "recurring_expenses",
   {
@@ -114,8 +114,9 @@ export const recurringExpenses = pgTable(
 );
 
 /**
- * Gastos avulsos pagos no débito / Pix / dinheiro (saem integralmente na data).
- * Também é o destino de uma simulação de débito quando ela é efetivada.
+ * Despesas avulsas (não se repetem): cadastradas pela pessoa ou criadas ao efetivar
+ * uma simulação de débito/Pix. Contam como pagas (e saem do saldo) só depois de
+ * marcadas com "Pagar" (paid_at preenchido), igual às despesas fixas.
  */
 export const oneTimeExpenses = pgTable(
   "one_time_expenses",
@@ -132,6 +133,8 @@ export const oneTimeExpenses = pgTable(
       .unique()
       .references(() => simulations.id, { onDelete: "set null" }),
     notes: text("notes"),
+    /** Quando foi marcada como paga (nulo = pendente). */
+    paidAt: text("paid_at"),
     ...timestamps(),
   },
   (t) => [

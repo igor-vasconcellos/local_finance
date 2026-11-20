@@ -76,7 +76,7 @@ const TOPICS: Topic[] = [
     body: (
       <>
         <p>
-          Junta todas as saídas do mês — gastos fixos, parcelas de cartão que vencem no mês e gastos avulsos — e agrupa por
+          Junta todas as saídas do mês — despesas fixas, parcelas de cartão que vencem no mês e despesas avulsas — e agrupa por
           categoria.
         </p>
         <ol>
@@ -107,24 +107,27 @@ const TOPICS: Topic[] = [
   },
   {
     icon: Receipt,
-    title: "Gastos fixos e avulsos",
-    summary: "Contas que se repetem todo mês e compras no débito/Pix.",
-    href: "/gastos",
-    linkLabel: "Abrir Gastos fixos",
+    title: "Despesas",
+    summary: "Despesas fixas (todo mês) e avulsas (uma vez só).",
+    href: "/despesas",
+    linkLabel: "Abrir Despesas",
     body: (
       <>
         <ol>
           <li>
-            Em <strong>Novo gasto</strong>, informe descrição, categoria, valor e dia de vencimento. Se o gasto vai acabar (ex.:
-            um curso), defina o mês de término.
+            Em <strong>Nova despesa</strong>, escolha a <strong>Repetição</strong>: “Todo mês, sem fim” (ex.: aluguel), “Todo
+            mês até…” (ex.: um curso) ou “Só uma vez” (despesa avulsa, com data).
           </li>
-          <li>A lateral mostra quanto cada categoria pesa no seu mês.</li>
-          <li>Todo mês, marque como pago na Visão geral com “Pagar”.</li>
+          <li>
+            A aba <strong>Fixas</strong> lista as que se repetem; a aba <strong>Avulsas</strong> mostra as de cada mês.
+          </li>
+          <li>
+            Fixas e avulsas aparecem em “Próximos vencimentos” na Visão geral até você marcar <strong>Pagar</strong> — só então
+            saem do saldo. Na avulsa, dá para cadastrar já como paga.
+          </li>
+          <li>Uma despesa fixa sem data final se repete todo mês: para parar, edite e escolha “Todo mês até…”.</li>
         </ol>
-        <p>
-          <strong>Gastos avulsos</strong> (débito/Pix) aparecem no fim da página — hoje eles são criados ao efetivar uma simulação
-          de débito no Simulador.
-        </p>
+        <p>Compras no débito/Pix efetivadas pelo Simulador também viram despesas avulsas.</p>
       </>
     ),
   },

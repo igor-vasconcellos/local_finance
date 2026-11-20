@@ -153,7 +153,7 @@ export function SimulatorView({ months, thresholds, cards, categories, simulatio
                 <tr className="border-b text-left text-xs text-muted-foreground uppercase">
                   <th className="py-2 pr-3 font-medium">Mês</th>
                   <th className="hidden py-2 pr-3 text-right font-medium 2xl:table-cell">Renda</th>
-                  <th className="hidden py-2 pr-3 text-right font-medium md:table-cell" title="Gastos fixos + faturas + avulsos + metas + simulações salvas">
+                  <th className="hidden py-2 pr-3 text-right font-medium md:table-cell" title="Despesas fixas + faturas + despesas avulsas + metas + simulações salvas">
                     Compromissos
                   </th>
                   <th className="py-2 pr-3 text-right font-medium">Esta compra</th>
@@ -198,7 +198,7 @@ export function SimulatorView({ months, thresholds, cards, categories, simulatio
             </table>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            Livre = rendas previstas − (gastos fixos + faturas que vencem no mês + gastos avulsos + metas das caixinhas + simulações salvas).
+            Livre = rendas previstas − (despesas fixas + faturas que vencem no mês + despesas avulsas + metas das caixinhas + simulações salvas).
             Farol: verde acima de {formatPct(thresholds.greenBp / 100, 0)} da renda, amarelo a partir de {formatPct(thresholds.yellowBp / 100, 0)}.{" "}
             <Link href="/configuracoes#farol" className="text-primary hover:underline">
               Ajustar
