@@ -114,7 +114,7 @@ function UploadStep({ cardId, onPreview }: { cardId: number; onPreview: (p: Impo
           <span className="font-semibold">
             {pending ? `Lendo ${fileName ?? "arquivo"}…` : "Arraste a fatura aqui ou clique para escolher"}
           </span>
-          <span className="text-sm text-muted-foreground">PDF ou CSV · até 10 MB</span>
+          <span className="text-sm text-muted-foreground">PDF ou CSV · até 5 MB</span>
           <input
             ref={input}
             type="file"

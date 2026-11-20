@@ -15,6 +15,12 @@ export const users = pgTable(
     avatarColor: text("avatar_color"), // cor de fundo do avatar (perfil)
     /** Preenchido quando a pessoa confirma o e-mail com o código do cadastro. */
     emailVerifiedAt: text("email_verified_at"),
+    /** Bloqueio feito pelo admin (ex.: falta de pagamento). Bloqueada = só consulta. */
+    blockedAt: text("blocked_at"),
+    blockedReason: text("blocked_reason"),
+    /** Cortesia: uso liberado sem pagar. courtesy_until nulo = permanente. */
+    courtesyAt: text("courtesy_at"),
+    courtesyUntil: text("courtesy_until"),
     ...timestamps(),
   },
   (t) => [
