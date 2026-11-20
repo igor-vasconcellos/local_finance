@@ -38,8 +38,9 @@ const TOPICS: Topic[] = [
         <p>Mostra quanto entra, quanto sai e quanto sobra. Tem três abas:</p>
         <ul>
           <li>
-            <strong>Mensal</strong> — total recebido, despesas pagas, a receber, a pagar, reserva, patrimônio e a{" "}
-            <strong>previsão do mês</strong> (realizado + a receber − a pagar − metas).
+            <strong>Mensal</strong> — <strong>saldo em conta</strong> (calculado sozinho: o que você marcou como recebido −
+            o que marcou como pago, com a sobra dos meses anteriores), total recebido, despesas pagas, a receber, a pagar,
+            reserva e a <strong>previsão do mês</strong> (realizado + a receber − a pagar − metas).
           </li>
           <li>
             <strong>Semestral</strong> e <strong>Anual</strong> — gráfico e tabela do fluxo de caixa previsto, com o farol de cada
@@ -234,9 +235,6 @@ const TOPICS: Topic[] = [
       <ul>
         <li>
           <strong>Conta</strong>: nome e cor do seu avatar.
-        </li>
-        <li>
-          <strong>Saldo em conta</strong>: fica na Visão geral e se atualiza sozinho quando você confirma recebimentos, pagamentos, faturas e movimentações de caixinhas. Use “Ajustar” se o banco mostrar outro valor.
         </li>
         <li>
           <strong>CDI</strong>: informe por mês (como no app do banco) ou por ano; o app converte e guarda o histórico.
