@@ -3,7 +3,7 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { first, touched } from "@/db/query";
 import { categories, creditCards, oneTimeExpenses, simulationInstallments, simulations } from "@/db/schema";
-import type { Month } from "@/lib/dates";
+import { todayISO, type Month } from "@/lib/dates";
 import { simulationSchedule } from "@/lib/simulation";
 import type { SimulationInput } from "@/lib/validation/finance";
 import { createPurchaseTx } from "./cards";
@@ -154,6 +154,8 @@ export async function effectivateSimulation(uid: number, id: number): Promise<Si
         date: sim.purchaseDate,
         simulationId: sim.id,
         notes: "Efetivada pelo simulador",
+        // Compra que já aconteceu entra como paga; com data futura fica para "Pagar".
+        paidAt: sim.purchaseDate <= todayISO() ? new Date().toISOString() : null,
       });
     }
     await tx

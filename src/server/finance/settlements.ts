@@ -8,7 +8,7 @@ import type { Month } from "@/lib/dates";
 export type SettlementKind = "income" | "expense";
 
 /**
- * Marca (ou desmarca) uma renda como recebida / um gasto fixo como pago no mês.
+ * Marca (ou desmarca) uma renda como recebida / uma despesa fixa como paga no mês.
  * Guarda o valor do momento da confirmação.
  */
 export async function setSettled(

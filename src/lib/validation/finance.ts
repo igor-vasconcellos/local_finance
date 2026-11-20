@@ -145,7 +145,21 @@ export const purchaseSchema = z.object({
 });
 
 export type IncomeInput = z.infer<typeof incomeSchema>;
+/** Despesa avulsa (não se repete). paid = "Já está paga". */
+export const oneTimeSchema = z.object({
+  description: name("uma descrição"),
+  categoryId: z.coerce.number({ error: "Escolha uma categoria." }).int().positive("Escolha uma categoria."),
+  amount: moneyField(),
+  date: dateField,
+  paid: z
+    .string()
+    .optional()
+    .transform((v) => v === "on" || v === "true"),
+  notes,
+});
+
 export type ExpenseInput = z.infer<typeof expenseSchema>;
+export type OneTimeInput = z.infer<typeof oneTimeSchema>;
 export type CardInput = z.infer<typeof cardSchema>;
 export type PurchaseInput = z.infer<typeof purchaseSchema>;
 

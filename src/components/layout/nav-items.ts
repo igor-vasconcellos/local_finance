@@ -23,7 +23,7 @@ export const NAV_SECTIONS: { title?: string; items: NavItem[] }[] = [
     title: "Planejamento",
     items: [
       { href: "/rendas", label: "Rendas", icon: TrendingUp },
-      { href: "/gastos", label: "Gastos fixos", icon: Receipt },
+      { href: "/despesas", label: "Despesas", icon: Receipt },
       { href: "/cartoes", label: "Cartões", icon: CreditCard },
       { href: "/caixinhas", label: "Caixinhas", icon: PiggyBank },
       { href: "/simulador", label: "Simulador", icon: Calculator },

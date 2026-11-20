@@ -19,6 +19,11 @@ const nextConfig: NextConfig = {
 
   poweredByHeader: false,
 
+  // "Gastos fixos" virou "Despesas": links antigos continuam funcionando.
+  async redirects() {
+    return [{ source: "/gastos", destination: "/despesas", permanent: true }];
+  },
+
   turbopack: {
     rules: {
       "*.css": {

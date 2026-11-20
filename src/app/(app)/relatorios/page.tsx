@@ -11,7 +11,7 @@ import { requireUserId } from "@/server/auth/current";
 
 export const metadata: Metadata = { title: "Relatório por categoria" };
 
-const SOURCE_LABEL = { fixo: "Gasto fixo", cartão: "Cartão", avulso: "Avulso" } as const;
+const SOURCE_LABEL = { fixo: "Despesa fixa", cartão: "Cartão", avulso: "Despesa avulsa" } as const;
 
 export default async function ReportPage({ searchParams }: PageProps<"/relatorios">) {
   const uid = await requireUserId();
@@ -31,7 +31,7 @@ export default async function ReportPage({ searchParams }: PageProps<"/relatorio
     <>
       <PageHeader
         title="Gastos por categoria"
-        description={`Todas as saídas de ${formatMonthLong(month).toLowerCase()}: gastos fixos, parcelas das faturas que vencem no mês e gastos avulsos.`}
+        description={`Todas as saídas de ${formatMonthLong(month).toLowerCase()}: despesas fixas, parcelas das faturas que vencem no mês e despesas avulsas.`}
         actions={<MonthNav month={month} current={current} basePath="/relatorios" />}
       />
 
@@ -39,15 +39,15 @@ export default async function ReportPage({ searchParams }: PageProps<"/relatorio
         <EmptyState
           icon={<FileBarChart />}
           title="Nenhum gasto neste mês"
-          description="Navegue para outro mês ou cadastre gastos fixos e compras no cartão."
+          description="Navegue para outro mês ou cadastre despesas e compras no cartão."
         />
       ) : (
         <>
           <div className="mb-6 grid gap-4 sm:grid-cols-4">
             <Summary label="Total de saídas" value={formatBRL(totalCents)} strong />
-            <Summary label="Gastos fixos" value={formatBRL(bySource("fixo"))} />
+            <Summary label="Despesas fixas" value={formatBRL(bySource("fixo"))} />
             <Summary label="Cartões" value={formatBRL(bySource("cartão"))} />
-            <Summary label="Avulsos" value={formatBRL(bySource("avulso"))} />
+            <Summary label="Despesas avulsas" value={formatBRL(bySource("avulso"))} />
           </div>
 
           {/* Barra empilhada com a participação de cada categoria */}

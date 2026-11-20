@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 
 /** Navegação ← Mês → por searchParam (?mes=YYYY-MM). */
 export function MonthNav({ month, current, basePath }: { month: Month; current: Month; basePath: string }) {
-  const link = (m: Month) => (m === current ? basePath : `${basePath}?mes=${m}`);
+  const sep = basePath.includes("?") ? "&" : "?";
+  const link = (m: Month) => (m === current ? basePath : `${basePath}${sep}mes=${m}`);
   const arrow =
     "inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring";
   return (
