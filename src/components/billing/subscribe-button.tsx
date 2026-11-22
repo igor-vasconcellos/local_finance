@@ -6,7 +6,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { subscribeAction } from "@/server/actions/billing";
 
-/** Leva para o checkout do Mercado Pago (Pix, cartão ou boleto). */
+/** Leva para a página de pagamento do provedor (Pix ou cartão). */
 export function SubscribeButton({
   label = "Pagar agora",
   size,

@@ -26,8 +26,8 @@ export async function subscribeAction(): Promise<{ error?: string }> {
     console.error("[billing] checkout:", error instanceof Error ? error.message : error);
     if (error instanceof MercadoPagoError) {
       return error.status >= 400 && error.status < 500
-        ? { error: "O Mercado Pago recusou abrir o pagamento. Tente de novo; se continuar, fale com o suporte." }
-        : { error: "O Mercado Pago não respondeu agora. Tente de novo em instantes." };
+        ? { error: "Não foi possível abrir o pagamento. Tente de novo; se continuar, fale com o suporte." }
+        : { error: "O serviço de pagamento não respondeu agora. Tente de novo em instantes." };
     }
     return { error: "Não foi possível abrir o pagamento. Tente de novo." };
   }

@@ -47,8 +47,8 @@ export default async function SubscriptionReturnPage() {
             <Clock className="mx-auto size-10 text-warning" aria-hidden />
             <h2 className="text-lg font-semibold">Aguardando a confirmação do pagamento</h2>
             <p className="text-sm text-muted-foreground">
-              Pix e cartão costumam confirmar em instantes; boleto pode levar até 3 dias úteis. Assim que o Mercado Pago
-              confirmar, seu acesso é liberado automaticamente.
+              Pix e cartão costumam confirmar em instantes. Assim que o pagamento for confirmado, seu acesso é
+              liberado automaticamente.
             </p>
           </>
         ) : (

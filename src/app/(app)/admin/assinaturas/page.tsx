@@ -39,7 +39,7 @@ export default async function AdminSubscriptionsPage() {
         <StatCard label="Com acesso pago" value={overview.payingNow} hint="pagamento em dia" icon={<UserCheck />} tone="success" />
         <StatCard label="Renovação ligada" value={overview.renewing} hint="cobrança automática" icon={<Repeat />} tone="primary" />
         <StatCard label="Recebido no mês" value={formatBRL(overview.revenueMonthCents)} hint="cobranças aprovadas" icon={<CircleDollarSign />} />
-        <StatCard label="Recusadas (30 dias)" value={overview.failedLast30} hint="o MP tenta de novo" icon={<AlertTriangle />} tone="danger" />
+        <StatCard label="Recusadas (30 dias)" value={overview.failedLast30} hint="nova tentativa automática" icon={<AlertTriangle />} tone="danger" />
       </div>
 
       <Card>

@@ -49,7 +49,7 @@ export function PaywallNotice({ priceLabel, neverPaid }: { priceLabel: string; n
                 {priceLabel} por mês · renovação automática
               </p>
               <p className="text-muted-foreground">
-                Pague com Pix, cartão ou boleto no Mercado Pago. Cancele quando quiser em Configurações → Assinatura.
+                Pague com Pix ou cartão, em ambiente seguro. Cancele quando quiser em Configurações → Assinatura.
               </p>
             </div>
           </div>

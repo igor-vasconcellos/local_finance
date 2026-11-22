@@ -59,7 +59,7 @@ export function SubscriptionSection({ info }: { info: SubscriptionInfo }) {
   let summary: string;
   if (renewing && info.state === "trial") summary = `Assinatura ativa. A primeira cobrança acontece depois do teste, em ${formatDate(nextDay(info.trialLastDay))}.`;
   else if (renewing && info.state === "active") summary = info.nextPaymentDate ? `Próxima cobrança em ${formatDate(info.nextPaymentDate)}.` : "Renovação automática ligada.";
-  else if (info.state === "grace") summary = `A última cobrança não foi aprovada. O Mercado Pago tenta de novo; seu acesso segue até ${formatDate(info.accessLastDay!)}.`;
+  else if (info.state === "grace") summary = `A última cobrança não foi aprovada. Vamos tentar de novo nos próximos dias; seu acesso segue até ${formatDate(info.accessLastDay!)}.`;
   else if (info.state === "trial") summary = `Seu teste grátis vai até ${formatDate(info.trialLastDay)}. Assine agora e a primeira cobrança só acontece depois dele.`;
   else if (info.state === "active") summary = `Renovação cancelada. Seu acesso pago vai até ${formatDate(info.accessLastDay!)}.`;
   else summary = "Sem assinatura ativa: sua conta está só para consulta.";
@@ -103,7 +103,7 @@ export function SubscriptionSection({ info }: { info: SubscriptionInfo }) {
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        Pagamento processado pelo Mercado Pago (Pix, cartão ou boleto). O BeaconFinance não vê nem guarda dados do seu cartão.
+        Pagamento em ambiente seguro, com Pix ou cartão. O BeaconFinance não vê nem guarda os dados do seu cartão.
       </p>
 
       {info.payments.length > 0 && (

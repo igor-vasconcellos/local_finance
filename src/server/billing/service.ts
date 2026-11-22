@@ -113,7 +113,7 @@ export async function startCheckout(uid: number, access: Access, now: Date = new
     idempotencyKey: randomUUID(),
   });
   if (!remote.id || !isTrustedCheckoutUrl(remote.init_point)) {
-    throw new BillingError("O Mercado Pago não devolveu um link de pagamento válido.");
+    throw new BillingError("Não foi possível gerar o link de pagamento. Tente de novo.");
   }
 
   await db
@@ -186,7 +186,7 @@ async function notifyFailure(uid: number, email: string) {
       "Olá!",
       "",
       "A cobrança mensal da sua assinatura do BeaconFinance não foi aprovada.",
-      `O Mercado Pago vai tentar de novo nos próximos dias. Seu acesso continua liberado por ${env.BILLING_GRACE_DAYS} dias.`,
+      `Vamos tentar cobrar de novo nos próximos dias. Seu acesso continua liberado por ${env.BILLING_GRACE_DAYS} dias.`,
       `Para trocar a forma de pagamento, acesse ${env.APP_URL}/configuracoes#assinatura.`,
       "",
       "Se você já resolveu, pode ignorar este e-mail.",
