@@ -94,10 +94,16 @@ export type Env = z.infer<typeof envSchema>;
  * Aceita também os nomes criados pela integração Supabase ↔ Vercel (Marketplace):
  * POSTGRES_URL (pooler em modo transação) e POSTGRES_URL_NON_POOLING.
  */
+function vercelUrl(host: string | undefined): string | undefined {
+  return host ? `https://${host}` : undefined;
+}
+
 function withDatabaseAliases(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return {
     ...source,
     DATABASE_URL: source.DATABASE_URL || source.POSTGRES_URL,
+    // Sem APP_URL na Vercel (homologação/preview): usa o endereço fixo da branch.
+    APP_URL: source.APP_URL || vercelUrl(source.VERCEL_BRANCH_URL) || vercelUrl(source.VERCEL_URL),
   };
 }
 
