@@ -42,6 +42,8 @@ export type BillingConfig = {
 export type BillingSubscription = {
   status: "pending" | "authorized" | "paused" | "cancelled";
   paidUntil: string | null;
+  /** Houve cobrança recusada (para diferenciar "recusado" de "confirmando o pagamento"). */
+  failing?: boolean;
 };
 
 export type BillingInput = {
@@ -62,6 +64,8 @@ export type BillingAccess = {
   /** Até quando (inclusive) o acesso segue liberado sem novo pagamento. */
   accessLastDay: string | null;
   subscriptionStatus: BillingSubscription["status"] | null;
+  /** Na tolerância por cobrança recusada (e não só aguardando a confirmação). */
+  failing: boolean;
 };
 
 const DAY_MS = 86_400_000;
@@ -112,7 +116,14 @@ export function resolveBilling(input: BillingInput, today: string): BillingAcces
   else if (graceLastDay && today <= graceLastDay) state = "grace";
   else state = "expired";
 
-  return { state, trialLastDay, paidUntil, accessLastDay, subscriptionStatus: subscription?.status ?? null };
+  return {
+    state,
+    trialLastDay,
+    paidUntil,
+    accessLastDay,
+    subscriptionStatus: subscription?.status ?? null,
+    failing: subscription?.failing ?? false,
+  };
 }
 
 export function isAdminUser(user: Pick<AccessUser, "email" | "emailVerifiedAt">, adminEmails: readonly string[]): boolean {

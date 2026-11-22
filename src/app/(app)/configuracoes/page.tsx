@@ -72,6 +72,7 @@ async function subscriptionInfo(uid: number, access: Awaited<ReturnType<typeof r
     accessLastDay: b.accessLastDay,
     paidUntil: b.paidUntil,
     subscriptionStatus: b.subscriptionStatus,
+    failing: b.failing,
     nextPaymentDate: sub?.nextPaymentDate ?? null,
     payments,
   };

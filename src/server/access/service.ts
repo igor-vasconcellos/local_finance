@@ -39,6 +39,7 @@ export async function getAccessForUser(uid: number, now: Date = new Date()): Pro
         createdAt: users.createdAt,
         subStatus: subscriptions.status,
         subPaidUntil: subscriptions.paidUntil,
+        subLastFailureAt: subscriptions.lastFailureAt,
       })
       .from(users)
       .leftJoin(subscriptions, eq(subscriptions.userId, users.id))
@@ -50,7 +51,9 @@ export async function getAccessForUser(uid: number, now: Date = new Date()): Pro
   const billing = {
     config: billingConfig(),
     userCreatedAt: user.createdAt,
-    subscription: user.subStatus ? { status: user.subStatus, paidUntil: user.subPaidUntil } : null,
+    subscription: user.subStatus
+      ? { status: user.subStatus, paidUntil: user.subPaidUntil, failing: user.subLastFailureAt != null }
+      : null,
   };
   return resolveAccess(user, locks, env.ADMIN_EMAILS, now, billing, todayISO(now));
 }

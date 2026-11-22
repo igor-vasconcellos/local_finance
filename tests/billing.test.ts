@@ -156,6 +156,8 @@ function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respon
     return json(p);
   }
   if (url.pathname === "/authorized_payments/search") {
+    // Como o MP real: "limit" acima do permitido é recusado.
+    if (Number(url.searchParams.get("limit") ?? 0) > 50) return json({ message: "Invalid value for limit" }, 400);
     const pid = url.searchParams.get("preapproval_id");
     return json({ results: [...mp.authorized.values()].filter((a) => a.preapproval_id === pid) });
   }

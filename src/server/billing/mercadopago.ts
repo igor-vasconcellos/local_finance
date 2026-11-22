@@ -117,12 +117,20 @@ export function getAuthorizedPayment(id: string): Promise<MpAuthorizedPayment> {
   return call<MpAuthorizedPayment>("GET", `/authorized_payments/${encodeURIComponent(id)}`);
 }
 
+/** Todas as cobranças da assinatura, página por página (tamanho padrão do MP; "limit" alto é recusado). */
 export async function searchAuthorizedPayments(preapprovalId: string): Promise<MpAuthorizedPayment[]> {
-  const r = await call<{ results?: MpAuthorizedPayment[] }>(
-    "GET",
-    `/authorized_payments/search?preapproval_id=${encodeURIComponent(preapprovalId)}&limit=100`,
-  );
-  return Array.isArray(r.results) ? r.results : [];
+  const all: MpAuthorizedPayment[] = [];
+  for (let page = 0; page < 20; page++) {
+    const r = await call<{ results?: MpAuthorizedPayment[]; paging?: { total?: number } }>(
+      "GET",
+      `/authorized_payments/search?preapproval_id=${encodeURIComponent(preapprovalId)}&offset=${all.length}`,
+    );
+    const results = Array.isArray(r.results) ? r.results : [];
+    all.push(...results);
+    const total = r.paging?.total ?? all.length;
+    if (results.length === 0 || all.length >= total) break;
+  }
+  return all;
 }
 
 export type MpPayment = { id: number | string; status?: string; external_reference?: string | null };
