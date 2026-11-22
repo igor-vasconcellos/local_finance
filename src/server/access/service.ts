@@ -3,10 +3,20 @@ import { eq } from "drizzle-orm";
 import { cache } from "react";
 import { db } from "@/db/client";
 import { first } from "@/db/query";
-import { featureFlags, users } from "@/db/schema";
+import { featureFlags, subscriptions, users } from "@/db/schema";
 import type { FeatureKey } from "@/db/schema/admin";
 import { env } from "@/env";
-import { resolveAccess, type Access, type FeatureLocks } from "./policy";
+import { todayISO } from "@/lib/dates";
+import { resolveAccess, type Access, type BillingConfig, type FeatureLocks } from "./policy";
+
+export function billingConfig(): BillingConfig {
+  return {
+    enabled: env.BILLING_ENABLED,
+    startDate: env.BILLING_START_DATE ?? null,
+    trialDays: env.BILLING_TRIAL_DAYS,
+    graceDays: env.BILLING_GRACE_DAYS,
+  };
+}
 
 /** Travas globais ligadas (sem linha ou locked=false = liberada). */
 export async function getFeatureLocks(): Promise<FeatureLocks> {
@@ -26,13 +36,23 @@ export async function getAccessForUser(uid: number, now: Date = new Date()): Pro
         blockedReason: users.blockedReason,
         courtesyAt: users.courtesyAt,
         courtesyUntil: users.courtesyUntil,
+        createdAt: users.createdAt,
+        subStatus: subscriptions.status,
+        subPaidUntil: subscriptions.paidUntil,
       })
       .from(users)
+      .leftJoin(subscriptions, eq(subscriptions.userId, users.id))
       .where(eq(users.id, uid))
       .then(first),
     getFeatureLocks(),
   ]);
-  return user ? resolveAccess(user, locks, env.ADMIN_EMAILS, now) : null;
+  if (!user) return null;
+  const billing = {
+    config: billingConfig(),
+    userCreatedAt: user.createdAt,
+    subscription: user.subStatus ? { status: user.subStatus, paidUntil: user.subPaidUntil } : null,
+  };
+  return resolveAccess(user, locks, env.ADMIN_EMAILS, now, billing, todayISO(now));
 }
 
 /** Acesso da conta logada, memoizado por requisição. */

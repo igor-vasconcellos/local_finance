@@ -9,3 +9,7 @@ process.env.SESSION_TTL_HOURS = "12";
 
 process.env.ADMIN_EMAILS = "admin@example.com";
 export {};
+// Mercado Pago: valores falsos; os testes trocam o fetch por um servidor simulado.
+process.env.MP_ACCESS_TOKEN = "TEST-token-falso";
+process.env.MP_WEBHOOK_SECRET = "segredo-webhook-teste";
+process.env.MP_API_BASE = "http://mp.test";

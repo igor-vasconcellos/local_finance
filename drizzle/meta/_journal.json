@@ -43,6 +43,13 @@
       "when": 1795203992790,
       "tag": "0005_despesas_avulsas",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795352166488,
+      "tag": "0006_assinaturas",
+      "breakpoints": true
     }
   ]
 }

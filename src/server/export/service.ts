@@ -52,6 +52,15 @@ const TABLES: { file: string; query: (uid: number) => SQL }[] = [
   { file: "fechamentos_mensais", query: (u) => sql`select * from monthly_settlements where user_id = ${u} order by id` },
   { file: "configuracoes", query: (u) => sql`select * from settings where user_id = ${u}` },
   { file: "taxas_cdi", query: (u) => sql`select * from cdi_rates where user_id = ${u} order by id` },
+  {
+    file: "assinatura",
+    query: (u) =>
+      sql`select status, price_cents, paid_until, next_payment_date, cancelled_at, created_at from subscriptions where user_id = ${u}`,
+  },
+  {
+    file: "assinatura_cobrancas",
+    query: (u) => sql`select charged_on, amount_cents, status, status_detail from payments where user_id = ${u} order by charged_on`,
+  },
 ];
 
 function cell(value: unknown): string {

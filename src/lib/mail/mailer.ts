@@ -104,3 +104,20 @@ export async function sendAdminAlert(params: { to: string[]; subject: string; te
     console.error("[alerta] Falha ao enviar alerta:", error instanceof Error ? error.message : error, "—", subject);
   }
 }
+
+/**
+ * Aviso simples para o próprio usuário (ex.: cobrança recusada). Nunca derruba
+ * quem chamou: sem SMTP ou com falha, o aviso vai para o log (sem o e-mail completo).
+ */
+export async function sendUserNotice(params: { to: string; subject: string; text: string }): Promise<void> {
+  const { to, subject, text } = params;
+  if (mailTransport === "console") {
+    console.log(`[aviso ao usuário] ${subject}\n${text}`);
+    return;
+  }
+  try {
+    await getTransporter().sendMail({ from: env.SMTP_FROM ?? env.SMTP_USER, to, subject: `BeaconFinance — ${subject}`, text });
+  } catch (error) {
+    console.error("[aviso] Falha ao enviar aviso:", error instanceof Error ? error.message : error, "—", subject);
+  }
+}

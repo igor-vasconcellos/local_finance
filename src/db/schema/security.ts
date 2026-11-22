@@ -16,6 +16,9 @@ export const SECURITY_EVENTS = [
   "blocked_write",
   "feature_locked",
   "session_revoked",
+  "billing_checkout",
+  "billing_cancelled",
+  "webhook_rejected",
 ] as const;
 export type SecurityEvent = (typeof SECURITY_EVENTS)[number];
 
