@@ -24,7 +24,11 @@ export async function subscribeAction(): Promise<{ error?: string }> {
   } catch (error) {
     if (error instanceof BillingError) return { error: error.message };
     console.error("[billing] checkout:", error instanceof Error ? error.message : error);
-    if (error instanceof MercadoPagoError) return { error: "O Mercado Pago não respondeu agora. Tente de novo em instantes." };
+    if (error instanceof MercadoPagoError) {
+      return error.status >= 400 && error.status < 500
+        ? { error: "Não foi possível abrir o pagamento. Tente de novo; se continuar, fale com o suporte." }
+        : { error: "O serviço de pagamento não respondeu agora. Tente de novo em instantes." };
+    }
     return { error: "Não foi possível abrir o pagamento. Tente de novo." };
   }
   await logSecurityEvent({ event: "billing_checkout", userId: uid });

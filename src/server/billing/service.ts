@@ -105,14 +105,15 @@ export async function startCheckout(uid: number, access: Access, now: Date = new
 
   const remote = await createPreapproval({
     userId: uid,
-    payerEmail: user.email,
+    // Homologação: o MP de teste exige um comprador de teste como pagador.
+    payerEmail: env.MP_TEST_PAYER_EMAIL ?? user.email,
     priceCents: env.BILLING_PRICE_CENTS,
     startDate,
     backUrl: `${env.APP_URL}/assinatura/retorno`,
     idempotencyKey: randomUUID(),
   });
   if (!remote.id || !isTrustedCheckoutUrl(remote.init_point)) {
-    throw new BillingError("O Mercado Pago não devolveu um link de pagamento válido.");
+    throw new BillingError("Não foi possível gerar o link de pagamento. Tente de novo.");
   }
 
   await db
@@ -185,7 +186,7 @@ async function notifyFailure(uid: number, email: string) {
       "Olá!",
       "",
       "A cobrança mensal da sua assinatura do BeaconFinance não foi aprovada.",
-      `O Mercado Pago vai tentar de novo nos próximos dias. Seu acesso continua liberado por ${env.BILLING_GRACE_DAYS} dias.`,
+      `Vamos tentar cobrar de novo nos próximos dias. Seu acesso continua liberado por ${env.BILLING_GRACE_DAYS} dias.`,
       `Para trocar a forma de pagamento, acesse ${env.APP_URL}/configuracoes#assinatura.`,
       "",
       "Se você já resolveu, pode ignorar este e-mail.",
