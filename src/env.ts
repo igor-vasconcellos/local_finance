@@ -82,6 +82,12 @@ const envSchema = z.object({
   MP_WEBHOOK_SECRET: optionalString,
   /** Só para testes locais (servidor falso). Em produção fica o padrão. */
   MP_API_BASE: z.url().default("https://api.mercadopago.com"),
+  /**
+   * Só na homologação: e-mail do COMPRADOR DE TESTE do Mercado Pago. Com
+   * credenciais de teste, o MP exige pagador de teste; sem isso o checkout dá
+   * "Both payer and collector must be real or test users". Proibido em produção.
+   */
+  MP_TEST_PAYER_EMAIL: optionalString.pipe(z.email().optional()),
 
   // ---- Cadastro ----
   /** Confere se o domínio do e-mail recebe mensagens (MX) antes de enviar o código. */
@@ -127,6 +133,9 @@ function loadEnv(): Env {
 
   if (env.BILLING_ENABLED && (!env.MP_ACCESS_TOKEN || !env.MP_WEBHOOK_SECRET)) {
     throw new Error("BILLING_ENABLED=true exige MP_ACCESS_TOKEN e MP_WEBHOOK_SECRET configurados.");
+  }
+  if (process.env.VERCEL_ENV === "production" && env.MP_TEST_PAYER_EMAIL) {
+    throw new Error("MP_TEST_PAYER_EMAIL é só para homologação; remova da produção.");
   }
   if (process.env.VERCEL_ENV === "production" && env.MP_API_BASE !== "https://api.mercadopago.com") {
     throw new Error("Em produção MP_API_BASE precisa ser https://api.mercadopago.com.");

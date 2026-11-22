@@ -105,7 +105,8 @@ export async function startCheckout(uid: number, access: Access, now: Date = new
 
   const remote = await createPreapproval({
     userId: uid,
-    payerEmail: user.email,
+    // Homologação: o MP de teste exige um comprador de teste como pagador.
+    payerEmail: env.MP_TEST_PAYER_EMAIL ?? user.email,
     priceCents: env.BILLING_PRICE_CENTS,
     startDate,
     backUrl: `${env.APP_URL}/assinatura/retorno`,
