@@ -19,6 +19,7 @@ export type SubscriptionInfo =
       accessLastDay: string | null;
       paidUntil: string | null;
       subscriptionStatus: "pending" | "authorized" | "paused" | "cancelled" | null;
+      failing: boolean;
       nextPaymentDate: string | null;
       payments: { id: number; amountCents: number; status: string; chargedOn: string }[];
     };
@@ -53,12 +54,14 @@ export function SubscriptionSection({ info }: { info: SubscriptionInfo }) {
   }
 
   const renewing = info.subscriptionStatus === "authorized";
-  const state = STATE[info.state];
+  const confirming = info.state === "grace" && !info.failing;
+  const state = confirming ? { label: "Confirmando pagamento", tone: "primary" as BadgeTone } : STATE[info.state];
   const price = formatBRL(info.priceCents);
 
   let summary: string;
   if (renewing && info.state === "trial") summary = `Assinatura ativa. A primeira cobrança acontece depois do teste, em ${formatDate(nextDay(info.trialLastDay))}.`;
   else if (renewing && info.state === "active") summary = info.nextPaymentDate ? `Próxima cobrança em ${formatDate(info.nextPaymentDate)}.` : "Renovação automática ligada.";
+  else if (confirming) summary = "Recebemos sua assinatura. A confirmação do pagamento costuma levar poucos minutos.";
   else if (info.state === "grace") summary = `A última cobrança não foi aprovada. Vamos tentar de novo nos próximos dias; seu acesso segue até ${formatDate(info.accessLastDay!)}.`;
   else if (info.state === "trial") summary = `Seu teste grátis vai até ${formatDate(info.trialLastDay)}. Assine agora e a primeira cobrança só acontece depois dele.`;
   else if (info.state === "active") summary = `Renovação cancelada. Seu acesso pago vai até ${formatDate(info.accessLastDay!)}.`;

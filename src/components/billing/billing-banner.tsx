@@ -1,10 +1,18 @@
 import Link from "next/link";
-import { AlertTriangle, Gift } from "lucide-react";
+import { AlertTriangle, Clock, Gift } from "lucide-react";
 import { formatDate } from "@/lib/dates";
 import type { BillingAccess } from "@/server/access/policy";
 
 /** Faixa discreta no topo: dias de teste restantes ou cobrança recusada (tolerância). */
 export function BillingBanner({ billing, daysLeft }: { billing: BillingAccess; daysLeft: number }) {
+  if (billing.state === "grace" && !billing.failing) {
+    return (
+      <div role="status" className="border-b bg-accent/50 px-4 py-2 text-center text-sm">
+        <Clock className="mr-1.5 inline size-3.5 -translate-y-px text-primary" aria-hidden />
+        Estamos confirmando seu pagamento. Isso costuma levar poucos minutos, e seu acesso segue liberado.
+      </div>
+    );
+  }
   if (billing.state === "grace") {
     return (
       <div role="status" className="border-b border-warning/30 bg-warning-soft px-4 py-2 text-center text-sm">
