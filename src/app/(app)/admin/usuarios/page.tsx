@@ -2,13 +2,19 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { maskEmail } from "@/lib/mask";
+import { todayISO } from "@/lib/dates";
+import { resolveBilling } from "@/server/access/policy";
+import { billingConfig } from "@/server/access/service";
+import { subscriptionStatusByUser } from "@/server/admin/billing";
 import { listUsers } from "@/server/admin/service";
 import { UsersView } from "./users-view";
 
 export default async function AdminUsersPage({ searchParams }: PageProps<"/admin/usuarios">) {
   const q = (await searchParams).q;
   const search = typeof q === "string" ? q : "";
-  const users = await listUsers(search);
+  const [users, subs] = await Promise.all([listUsers(search), subscriptionStatusByUser()]);
+  const config = billingConfig();
+  const todayBr = todayISO();
   const today = new Date().toISOString().slice(0, 10);
 
   return (
@@ -25,7 +31,17 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
       <UsersView
         today={today}
         search={search}
-        users={users.map(({ email, ...u }) => ({ ...u, maskedEmail: maskEmail(email) }))}
+        users={users.map(({ email, ...u }) => {
+          const sub = subs.get(u.id);
+          const exempt = !config.enabled || u.isAdmin || u.courtesyActive;
+          const billing = exempt
+            ? null
+            : resolveBilling(
+                { config, userCreatedAt: u.createdAt, subscription: sub ?? null },
+                todayBr,
+              ).state;
+          return { ...u, maskedEmail: maskEmail(email), billing };
+        })}
       />
     </div>
   );

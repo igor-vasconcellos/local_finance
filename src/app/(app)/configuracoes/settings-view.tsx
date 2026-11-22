@@ -1,7 +1,7 @@
 "use client";
 
 import { DateInput } from "@/components/ui/date-input";
-import { BookOpen, Check, Gauge, KeyRound, Percent, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import { BookOpen, Check, CreditCard, Gauge, KeyRound, Percent, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { startTransition, useActionState, useState, type ReactNode } from "react";
 import { HealthBadge } from "@/components/finance/health-badge";
 import { Avatar } from "@/components/layout/avatar";
@@ -9,6 +9,7 @@ import { AVATAR_COLORS } from "@/lib/profile";
 import { Guide } from "./guide";
 import { SettingsNav } from "./settings-nav";
 import { ActivitySection, type ActivityItem, type DeviceItem } from "./activity-section";
+import { SubscriptionSection, type SubscriptionInfo } from "./subscription-section";
 import { useFormAction } from "@/components/finance/use-form-action";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,8 @@ type Props = {
   cdiRates: CdiRate[];
   currentCdi: CdiRate | null;
   today: ISODate;
+  /** null = cobrança desligada (seção escondida). */
+  subscription: SubscriptionInfo | null;
 };
 
 const SECTIONS = [
@@ -52,12 +55,20 @@ const SECTIONS = [
 ];
 
 export function SettingsView(props: Props) {
+  const sections = props.subscription
+    ? [SECTIONS[0], { id: "assinatura", label: "Assinatura" }, ...SECTIONS.slice(1)]
+    : SECTIONS;
   return (
     <div className="grid gap-8 lg:grid-cols-[180px_1fr]">
-      <SettingsNav sections={SECTIONS} />
+      <SettingsNav sections={sections} />
 
       <div className="grid min-w-0 gap-6">
         <AccountSection user={props.user} />
+        {props.subscription && (
+          <Section id="assinatura" icon={<CreditCard />} title="Assinatura" description="Plano, próxima cobrança e histórico.">
+            <SubscriptionSection info={props.subscription} />
+          </Section>
+        )}
         <CdiSection rates={props.cdiRates} current={props.currentCdi} today={props.today} />
         <HealthSection settings={props.settings} />
         <SecuritySection {...props} />

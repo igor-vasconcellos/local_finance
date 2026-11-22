@@ -21,7 +21,16 @@ import {
 import type { AdminUserRow } from "@/server/admin/service";
 import { formatDateTime, formatDay } from "../format";
 
-export type UserItem = Omit<AdminUserRow, "email"> & { maskedEmail: string };
+/** Situação de cobrança (null = cobrança desligada ou conta isenta). */
+export type BillingBadge = "trial" | "active" | "grace" | "expired" | null;
+export type UserItem = Omit<AdminUserRow, "email"> & { maskedEmail: string; billing: BillingBadge };
+
+const BILLING_BADGE: Record<Exclude<BillingBadge, null>, { label: string; tone: "primary" | "success" | "warning" | "danger" }> = {
+  trial: { label: "Teste grátis", tone: "primary" },
+  active: { label: "Assinante", tone: "success" },
+  grace: { label: "Cobrança pendente", tone: "warning" },
+  expired: { label: "Sem assinatura", tone: "danger" },
+};
 
 function StatusBadges({ u }: { u: UserItem }) {
   return (
@@ -42,8 +51,9 @@ function StatusBadges({ u }: { u: UserItem }) {
         </Badge>
       )}
       {u.courtesyAt && !u.courtesyActive && <Badge tone="warning">Cortesia vencida</Badge>}
+      {u.billing && <Badge tone={BILLING_BADGE[u.billing].tone}>{BILLING_BADGE[u.billing].label}</Badge>}
       {!u.verified && <Badge>E-mail não confirmado</Badge>}
-      {!u.isAdmin && !u.blockedAt && !u.courtesyAt && u.verified && <Badge>Normal</Badge>}
+      {!u.isAdmin && !u.blockedAt && !u.courtesyAt && !u.billing && u.verified && <Badge>Normal</Badge>}
     </div>
   );
 }

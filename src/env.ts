@@ -65,6 +65,24 @@ const envSchema = z.object({
         .filter(Boolean),
     ),
 
+  // ---- Assinatura (Etapa 11 · Mercado Pago) ----
+  /** Liga a cobrança. Desligada: ninguém vê paywall, tudo segue liberado. */
+  BILLING_ENABLED: z.stringbool().default(false),
+  /**
+   * Dia (YYYY-MM-DD) em que a cobrança foi ligada. Contas criadas antes ganham o
+   * teste grátis contado a partir deste dia. Vazio = dia de criação de cada conta.
+   */
+  BILLING_START_DATE: optionalString.pipe(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.").optional()),
+  BILLING_PRICE_CENTS: z.coerce.number().int().min(100).max(1_000_000).default(3900),
+  BILLING_TRIAL_DAYS: z.coerce.number().int().min(0).max(90).default(7),
+  BILLING_GRACE_DAYS: z.coerce.number().int().min(0).max(30).default(3),
+  /** Access Token do Mercado Pago (TEST-… na homologação, APP_USR-… na produção). */
+  MP_ACCESS_TOKEN: optionalString,
+  /** "Assinatura secreta" dos webhooks do Mercado Pago (painel → Suas integrações → Webhooks). */
+  MP_WEBHOOK_SECRET: optionalString,
+  /** Só para testes locais (servidor falso). Em produção fica o padrão. */
+  MP_API_BASE: z.url().default("https://api.mercadopago.com"),
+
   // ---- Cadastro ----
   /** Confere se o domínio do e-mail recebe mensagens (MX) antes de enviar o código. */
   EMAIL_MX_CHECK: z.stringbool().default(true),
@@ -99,6 +117,13 @@ function loadEnv(): Env {
   // Em produção na Vercel o código NUNCA pode ir para o log: exige SMTP.
   if (process.env.VERCEL_ENV === "production" && env.MAIL_MODE !== "smtp") {
     throw new Error("Em produção use MAIL_MODE=smtp (o modo console imprimiria códigos de acesso nos logs).");
+  }
+
+  if (env.BILLING_ENABLED && (!env.MP_ACCESS_TOKEN || !env.MP_WEBHOOK_SECRET)) {
+    throw new Error("BILLING_ENABLED=true exige MP_ACCESS_TOKEN e MP_WEBHOOK_SECRET configurados.");
+  }
+  if (process.env.VERCEL_ENV === "production" && env.MP_API_BASE !== "https://api.mercadopago.com") {
+    throw new Error("Em produção MP_API_BASE precisa ser https://api.mercadopago.com.");
   }
 
   return env;

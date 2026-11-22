@@ -6,7 +6,7 @@ import { SESSION_COOKIE, verifySessionJwt } from "@/lib/auth/jwt";
  * A validação completa (sessão existe, não revogada) acontece em requireSession()
  * nas páginas e Server Actions protegidas.
  */
-const PUBLIC_PATHS = ["/login", "/verify", "/cadastro", "/esqueci-senha", "/redefinir-senha", "/api/cron"];
+const PUBLIC_PATHS = ["/login", "/verify", "/cadastro", "/esqueci-senha", "/redefinir-senha", "/api/cron", "/api/webhooks"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

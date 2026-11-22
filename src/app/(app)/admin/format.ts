@@ -72,7 +72,10 @@ export const SECURITY_LABEL: Record<string, string> = {
   blocked_write: "Tentativa barrada (conta bloqueada)",
   feature_locked: "Tentativa barrada (função travada)",
   session_revoked: "Encerrou uma sessão",
+  billing_checkout: "Abriu o checkout da assinatura",
+  billing_cancelled: "Cancelou a assinatura",
+  webhook_rejected: "Notificação de pagamento recusada",
 };
 
 /** Eventos que merecem destaque (vermelho) na lista. */
-export const SECURITY_DANGER = new Set(["login_failed", "login_locked", "code_failed", "blocked_write"]);
+export const SECURITY_DANGER = new Set(["login_failed", "login_locked", "code_failed", "blocked_write", "webhook_rejected"]);
